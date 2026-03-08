@@ -10,42 +10,65 @@ import (
 	"strings"
 )
 
+// CLIProviderType defines the type of CLI provider
+type CLIProviderType string
+
+const (
+	CLIProviderCodex CLIProviderType = "codex"
+	CLIProviderIFlow CLIProviderType = "iflow"
+)
+
 // CodexCliProvider implements LLMProvider by wrapping the codex CLI as a subprocess.
+// It also supports iFlow CLI as an alternative command.
 type CodexCliProvider struct {
-	command   string
-	workspace string
+	command       string
+	workspace     string
+	providerType  CLIProviderType
+	extraArgs     []string // Additional CLI-specific arguments
 }
 
 // NewCodexCliProvider creates a new Codex CLI provider.
 func NewCodexCliProvider(workspace string) *CodexCliProvider {
 	return &CodexCliProvider{
-		command:   "codex",
-		workspace: workspace,
+		command:      "codex",
+		workspace:    workspace,
+		providerType: CLIProviderCodex,
+	}
+}
+
+// NewIFlowCliProvider creates a new iFlow CLI provider.
+// iFlow CLI is an AI agent CLI similar to Codex CLI but with different command structure.
+func NewIFlowCliProvider(workspace string) *CodexCliProvider {
+	return &CodexCliProvider{
+		command:      "iflow",
+		workspace:    workspace,
+		providerType: CLIProviderIFlow,
+		extraArgs:    []string{}, // iFlow-specific args can be added here
+	}
+}
+
+// NewCodexCliProviderWithCommand creates a new CLI provider with a custom command.
+func NewCodexCliProviderWithCommand(command string, workspace string) *CodexCliProvider {
+	providerType := CLIProviderCodex
+	if command == "iflow" {
+		providerType = CLIProviderIFlow
+	}
+	return &CodexCliProvider{
+		command:      command,
+		workspace:    workspace,
+		providerType: providerType,
 	}
 }
 
 // Chat implements LLMProvider.Chat by executing the codex CLI in non-interactive mode.
 func (p *CodexCliProvider) Chat(ctx context.Context, messages []Message, tools []ToolDefinition, model string, options map[string]interface{}) (*LLMResponse, error) {
 	if p.command == "" {
-		return nil, fmt.Errorf("codex command not configured")
+		return nil, fmt.Errorf("cli command not configured")
 	}
 
 	prompt := p.buildPrompt(messages, tools)
 
-	args := []string{
-		"exec",
-		"--json",
-		"--dangerously-bypass-approvals-and-sandbox",
-		"--skip-git-repo-check",
-		"--color", "never",
-	}
-	if model != "" && model != "codex-cli" {
-		args = append(args, "-m", model)
-	}
-	if p.workspace != "" {
-		args = append(args, "-C", p.workspace)
-	}
-	args = append(args, "-") // read prompt from stdin
+	args := p.buildCLIArgs(model)
 
 	cmd := exec.CommandContext(ctx, p.command, args...)
 	cmd.Stdin = bytes.NewReader([]byte(prompt))
@@ -71,17 +94,53 @@ func (p *CodexCliProvider) Chat(ctx context.Context, messages []Message, tools [
 			return nil, ctx.Err()
 		}
 		if stderrStr := stderr.String(); stderrStr != "" {
-			return nil, fmt.Errorf("codex cli error: %s", stderrStr)
+			return nil, fmt.Errorf("%s cli error: %s", p.command, stderrStr)
 		}
-		return nil, fmt.Errorf("codex cli error: %w", err)
+		return nil, fmt.Errorf("%s cli error: %w", p.command, err)
 	}
 
 	return p.parseJSONLEvents(stdout.String())
 }
 
+// buildCLIArgs constructs the CLI arguments based on provider type
+func (p *CodexCliProvider) buildCLIArgs(model string) []string {
+	args := []string{
+		"exec",
+		"--json",
+		"--dangerously-bypass-approvals-and-sandbox",
+		"--skip-git-repo-check",
+		"--color", "never",
+	}
+
+	// iFlow CLI may have additional or different flags
+	if p.providerType == CLIProviderIFlow {
+		// iFlow CLI uses same exec subcommand structure for compatibility
+		// Add any iFlow-specific flags here
+		args = append(args, p.extraArgs...)
+	}
+
+	if model != "" && model != "codex-cli" && model != "iflow-cli" {
+		args = append(args, "-m", model)
+	}
+	if p.workspace != "" {
+		args = append(args, "-C", p.workspace)
+	}
+	args = append(args, "-") // read prompt from stdin
+
+	return args
+}
+
 // GetDefaultModel returns the default model identifier.
 func (p *CodexCliProvider) GetDefaultModel() string {
+	if p.providerType == CLIProviderIFlow {
+		return "iflow-cli"
+	}
 	return "codex-cli"
+}
+
+// GetProviderType returns the CLI provider type
+func (p *CodexCliProvider) GetProviderType() CLIProviderType {
+	return p.providerType
 }
 
 // buildPrompt converts messages to a prompt string for the Codex CLI.
@@ -187,6 +246,7 @@ type codexEventErr struct {
 }
 
 // parseJSONLEvents processes the JSONL output from codex exec --json.
+// It handles output from both Codex CLI and iFlow CLI.
 func (p *CodexCliProvider) parseJSONLEvents(output string) (*LLMResponse, error) {
 	var contentParts []string
 	var usage *UsageInfo
@@ -228,7 +288,7 @@ func (p *CodexCliProvider) parseJSONLEvents(output string) (*LLMResponse, error)
 	}
 
 	if lastError != "" && len(contentParts) == 0 {
-		return nil, fmt.Errorf("codex cli: %s", lastError)
+		return nil, fmt.Errorf("%s cli: %s", p.command, lastError)
 	}
 
 	content := strings.Join(contentParts, "\n")

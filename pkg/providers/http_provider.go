@@ -313,6 +313,16 @@ func CreateProvider(cfg *config.Config) (LLMProvider, error) {
 				workspace = "."
 			}
 			return NewCodexCliProvider(workspace), nil
+		case "iflow-cli", "iflow", "iflow-code":
+			workspace := cfg.WorkspacePath()
+			if workspace == "" {
+				workspace = "."
+			}
+			// Check if custom command is configured
+			if cfg.Providers.IFlowCLI.APIBase != "" {
+				return NewCodexCliProviderWithCommand(cfg.Providers.IFlowCLI.APIBase, workspace), nil
+			}
+			return NewIFlowCliProvider(workspace), nil
 		case "deepseek":
 			if cfg.Providers.DeepSeek.APIKey != "" {
 				apiKey = cfg.Providers.DeepSeek.APIKey
@@ -325,12 +335,28 @@ func CreateProvider(cfg *config.Config) (LLMProvider, error) {
 				}
 			}
 		case "github_copilot", "copilot":
-			if cfg.Providers.GitHubCopilot.APIBase != "" {
-				apiBase = cfg.Providers.GitHubCopilot.APIBase
-			} else {
-				apiBase = "localhost:4321"
+			if cfg.Providers.GitHubCopilot.AuthMethod != "" {
+				// Use auth-based provider with token from auth store
+				return createCopilotAuthProvider(cfg)
 			}
-			return NewGitHubCopilotProvider(apiBase, cfg.Providers.GitHubCopilot.ConnectMode, model)
+			if cfg.Providers.GitHubCopilot.APIKey != "" || cfg.Providers.GitHubCopilot.APIBase != "" {
+				apiKey = cfg.Providers.GitHubCopilot.APIKey
+				apiBase = cfg.Providers.GitHubCopilot.APIBase
+				proxy = cfg.Providers.GitHubCopilot.Proxy
+				if apiBase == "" {
+					apiBase = "https://api.github.com/integrations/github-copilot/v1"
+				}
+				return NewCopilotProvider(apiKey, apiBase, proxy), nil
+			}
+			// Fall back to SDK-based provider for backwards compatibility
+			if cfg.Providers.GitHubCopilot.ConnectMode != "" || cfg.Providers.GitHubCopilot.APIBase != "" {
+				if cfg.Providers.GitHubCopilot.APIBase == "" {
+					apiBase = "localhost:4321"
+				} else {
+					apiBase = cfg.Providers.GitHubCopilot.APIBase
+				}
+				return NewGitHubCopilotProvider(apiBase, cfg.Providers.GitHubCopilot.ConnectMode, model)
+			}
 
 		}
 

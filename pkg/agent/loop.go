@@ -22,6 +22,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/constants"
+	"github.com/sipeed/picoclaw/pkg/hooks"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/providers"
 	"github.com/sipeed/picoclaw/pkg/session"
@@ -40,10 +41,12 @@ type AgentLoop struct {
 	sessions       *session.SessionManager
 	state          *state.Manager
 	contextBuilder *ContextBuilder
+	contextManager *ContextManager // New context manager for token tracking
 	tools          *tools.ToolRegistry
 	running        atomic.Bool
 	summarizing    sync.Map // Tracks which sessions are currently being summarized
 	channelManager *channels.Manager
+	hooksManager   *hooks.Manager
 }
 
 // processOptions configures how a message is processed
@@ -136,18 +139,42 @@ func NewAgentLoop(cfg *config.Config, msgBus *bus.MessageBus, provider providers
 	contextBuilder := NewContextBuilder(workspace)
 	contextBuilder.SetToolsRegistry(toolsRegistry)
 
+	// Create context manager for token tracking and truncation
+	contextManager := NewContextManager(
+		cfg.Agents.Defaults.MaxContextTokens,
+		cfg.Agents.Defaults.TruncationStrategy,
+		cfg.Agents.Defaults.Model,
+	)
+
+	// Create hooks manager and configure from config
+	hooksManager := hooks.NewManager(workspace)
+	if cfg.Hooks.Enabled {
+		hooksManager.Configure(hooks.Config{
+			Enabled:    cfg.Hooks.Enabled,
+			ScriptsDir: cfg.Hooks.ScriptsDir,
+			Events:     convertHookEvents(cfg.Hooks.Events),
+		})
+		logger.InfoCF("agent", "Hooks system enabled",
+			map[string]interface{}{
+				"scripts_dir": cfg.Hooks.ScriptsDir,
+				"events":      len(cfg.Hooks.Events),
+			})
+	}
+
 	return &AgentLoop{
 		bus:            msgBus,
 		provider:       provider,
 		workspace:      workspace,
 		model:          cfg.Agents.Defaults.Model,
-		contextWindow:  cfg.Agents.Defaults.MaxTokens, // Restore context window for summarization
+		contextWindow:  cfg.Agents.Defaults.MaxContextTokens, // Use max context tokens
 		maxIterations:  cfg.Agents.Defaults.MaxToolIterations,
 		sessions:       sessionsManager,
 		state:          stateManager,
 		contextBuilder: contextBuilder,
+		contextManager: contextManager,
 		tools:          toolsRegistry,
 		summarizing:    sync.Map{},
+		hooksManager:   hooksManager,
 	}
 }
 
@@ -167,6 +194,12 @@ func (al *AgentLoop) Run(ctx context.Context) error {
 			response, err := al.processMessage(ctx, msg)
 			if err != nil {
 				response = fmt.Sprintf("Error processing message: %v", err)
+				// Trigger on_error hook
+				al.hooksManager.TriggerOnError(ctx, err, map[string]interface{}{
+					"session_key": msg.SessionKey,
+					"channel":     msg.Channel,
+					"chat_id":    msg.ChatID,
+				})
 			}
 
 			if response != "" {
@@ -180,6 +213,9 @@ func (al *AgentLoop) Run(ctx context.Context) error {
 				}
 
 				if !alreadySent {
+					// Trigger on_message_sent hook
+					al.hooksManager.TriggerOnMessageSent(ctx, response, msg.SessionKey, msg.Channel, msg.ChatID)
+
 					al.bus.PublishOutbound(bus.OutboundMessage{
 						Channel: msg.Channel,
 						ChatID:  msg.ChatID,
@@ -263,6 +299,9 @@ func (al *AgentLoop) processMessage(ctx context.Context, msg bus.InboundMessage)
 			"sender_id":   msg.SenderID,
 			"session_key": msg.SessionKey,
 		})
+
+	// Trigger on_message hook when message is received
+	al.hooksManager.TriggerOnMessage(ctx, msg.Content, msg.SessionKey, msg.Channel, msg.ChatID)
 
 	// Route system messages to processSystemMessage
 	if msg.Channel == "system" {
@@ -371,6 +410,45 @@ func (al *AgentLoop) runAgentLoop(ctx context.Context, opts processOptions) (str
 		opts.ChatID,
 	)
 
+	// 2.5. Apply context management - truncate if needed
+	if al.contextManager != nil && !opts.NoHistory {
+		// Check if context needs truncation
+		needsTruncation, tokenCount := al.contextManager.NeedsTruncation(messages)
+		if needsTruncation {
+			logger.InfoCF("context", "Context limit exceeded, applying truncation",
+				map[string]interface{}{
+					"session_key": opts.SessionKey,
+					"token_count": tokenCount,
+					"max_tokens":  al.contextManager.GetMaxTokens(),
+					"strategy":    al.contextManager.GetStrategy(),
+				})
+
+			var truncInfo *TruncationInfo
+			var err error
+			messages, truncInfo, err = al.contextManager.PrepareMessagesForProvider(messages)
+			if err != nil {
+				logger.WarnCF("context", "Context truncation failed, using original messages",
+					map[string]interface{}{"error": err.Error()})
+			} else if truncInfo != nil {
+				logger.InfoCF("context", "Context truncated successfully",
+					map[string]interface{}{
+						"original_tokens": truncInfo.OriginalTokens,
+						"kept_tokens":     truncInfo.KeptTokens,
+						"removed_msgs":    truncInfo.RemovedMessages,
+						"compression_pct": truncInfo.CompressionRatio * 100,
+					})
+			}
+		}
+
+		// Log context usage for debugging
+		logger.DebugCF("context", "Context info",
+			map[string]interface{}{
+				"session_key":   opts.SessionKey,
+				"context_info":  al.contextManager.GetContextInfo(messages),
+				"message_count": len(messages),
+			})
+	}
+
 	// 3. Save user message to session
 	al.sessions.AddMessage(opts.SessionKey, "user", opts.UserMessage)
 
@@ -459,6 +537,9 @@ func (al *AgentLoop) runLLMIteration(ctx context.Context, messages []providers.M
 		var response *providers.LLMResponse
 		var err error
 
+		// Trigger pre_llm hook
+		al.hooksManager.TriggerPreLLM(ctx, opts.SessionKey, opts.Channel, opts.ChatID)
+
 		// Retry loop for context/token errors
 		maxRetries := 2
 		for retry := 0; retry <= maxRetries; retry++ {
@@ -468,6 +549,12 @@ func (al *AgentLoop) runLLMIteration(ctx context.Context, messages []providers.M
 			})
 
 			if err == nil {
+				// Trigger post_llm hook on success
+				responseContent := ""
+				if response != nil {
+					responseContent = response.Content
+				}
+				al.hooksManager.TriggerPostLLM(ctx, opts.SessionKey, opts.Channel, opts.ChatID, responseContent)
 				break // Success
 			}
 
@@ -656,13 +743,25 @@ func (al *AgentLoop) runLLMIteration(ctx context.Context, messages []providers.M
 				if !result.Silent && result.ForUser != "" {
 					logger.InfoCF("agent", "Async tool completed, agent will handle notification",
 						map[string]interface{}{
-							"tool":        tc.Name,
-							"content_len": len(result.ForUser),
+							"tool":         tc.Name,
+							"content_len":  len(result.ForUser),
 						})
 				}
 			}
 
+			// Trigger pre_tool hook
+			al.hooksManager.TriggerPreTool(ctx, tc.Name, tc.Arguments, opts.SessionKey, opts.Channel, opts.ChatID)
+
 			toolResult := al.tools.ExecuteWithContext(ctx, tc.Name, tc.Arguments, opts.Channel, opts.ChatID, asyncCallback)
+
+			// Determine content for LLM before triggering post_tool hook
+			contentForLLM := toolResult.ForLLM
+			if contentForLLM == "" && toolResult.Err != nil {
+				contentForLLM = toolResult.Err.Error()
+			}
+
+			// Trigger post_tool hook
+			al.hooksManager.TriggerPostTool(ctx, tc.Name, tc.Arguments, contentForLLM, opts.SessionKey, opts.Channel, opts.ChatID)
 
 			// Send ForUser content to user immediately if not Silent
 			if !toolResult.Silent && toolResult.ForUser != "" && opts.SendResponse {
@@ -676,12 +775,6 @@ func (al *AgentLoop) runLLMIteration(ctx context.Context, messages []providers.M
 						"tool":        tc.Name,
 						"content_len": len(toolResult.ForUser),
 					})
-			}
-
-			// Determine content for LLM based on tool result
-			contentForLLM := toolResult.ForLLM
-			if contentForLLM == "" && toolResult.Err != nil {
-				contentForLLM = toolResult.Err.Error()
 			}
 
 			toolResultMsg := providers.Message{
@@ -722,8 +815,18 @@ func (al *AgentLoop) updateToolContexts(channel, chatID string) {
 // maybeSummarize triggers summarization if the session history exceeds thresholds.
 func (al *AgentLoop) maybeSummarize(sessionKey, channel, chatID string) {
 	newHistory := al.sessions.GetHistory(sessionKey)
-	tokenEstimate := al.estimateTokens(newHistory)
-	threshold := al.contextWindow * 75 / 100
+
+	// Use context manager for token estimation if available
+	var tokenEstimate int
+	var threshold int
+	if al.contextManager != nil {
+		tokenEstimate = al.contextManager.EstimateMessagesTokens(newHistory)
+		threshold = al.contextManager.GetMaxTokens() * 75 / 100 // 75% threshold
+	} else {
+		// Fallback to legacy estimation
+		tokenEstimate = al.estimateTokens(newHistory)
+		threshold = al.contextWindow * 75 / 100
+	}
 
 	if len(newHistory) > 20 || tokenEstimate > threshold {
 		if _, loading := al.summarizing.LoadOrStore(sessionKey, true); !loading {
@@ -744,13 +847,31 @@ func (al *AgentLoop) maybeSummarize(sessionKey, channel, chatID string) {
 }
 
 // forceCompression aggressively reduces context when the limit is hit.
-// It drops the oldest 50% of messages (keeping system prompt and last user message).
+// It uses the context manager if available, otherwise falls back to the legacy approach.
 func (al *AgentLoop) forceCompression(sessionKey string) {
 	history := al.sessions.GetHistory(sessionKey)
 	if len(history) <= 4 {
 		return
 	}
 
+	// Use context manager if available
+	if al.contextManager != nil {
+		truncated, info, err := al.contextManager.TruncateMessages(history)
+		if err == nil && truncated != nil {
+			al.sessions.SetHistory(sessionKey, truncated)
+			al.sessions.Save(sessionKey)
+			logger.WarnCF("agent", "Forced compression executed via context manager",
+				map[string]interface{}{
+					"session_key":     sessionKey,
+					"dropped_msgs":    info.RemovedMessages,
+					"kept_tokens":     info.KeptTokens,
+					"compression_pct": info.CompressionRatio * 100,
+				})
+			return
+		}
+	}
+
+	// Fallback to legacy compression method
 	// Keep system prompt (usually [0]) and the very last message (user's trigger)
 	// We want to drop the oldest half of the *conversation*
 	// Assuming [0] is system, [1:] is conversation
@@ -817,7 +938,23 @@ func (al *AgentLoop) GetStartupInfo() map[string]interface{} {
 	// Skills info
 	info["skills"] = al.contextBuilder.GetSkillsInfo()
 
+	// Hooks info
+	info["hooks"] = al.hooksManager.GetRegisteredHooks()
+
 	return info
+}
+
+// convertHookEvents converts config hook events to hooks.Config format
+func convertHookEvents(events map[string]config.HookEventConfig) map[string]hooks.EventConfig {
+	result := make(map[string]hooks.EventConfig)
+	for k, v := range events {
+		result[k] = hooks.EventConfig{
+			Enabled: v.Enabled,
+			Script:  v.Script,
+			Timeout: v.Timeout,
+		}
+	}
+	return result
 }
 
 // formatMessagesForLog formats messages for logging

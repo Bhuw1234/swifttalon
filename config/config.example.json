@@ -4,7 +4,10 @@
       "workspace": "~/.picoclaw/workspace",
       "restrict_to_workspace": true,
       "model": "glm-4.7",
+      "model_fallbacks": ["claude-3-haiku-20240307", "gpt-4o-mini"],
       "max_tokens": 8192,
+      "max_context_tokens": 100000,
+      "truncation_strategy": "remove_oldest",
       "temperature": 0.7,
       "max_tool_iterations": 20
     }
@@ -73,15 +76,27 @@
   "providers": {
     "anthropic": {
       "api_key": "",
-      "api_base": ""
+      "api_base": "",
+      "profiles": [
+        {"name": "profile1", "api_key": "sk-ant-xxx1", "weight": 10},
+        {"name": "profile2", "api_key": "sk-ant-xxx2", "weight": 5}
+      ]
     },
     "openai": {
       "api_key": "",
-      "api_base": ""
+      "api_base": "",
+      "profiles": [
+        {"name": "primary", "api_key": "sk-xxx1", "weight": 10},
+        {"name": "backup", "api_key": "sk-xxx2", "weight": 5, "disabled": false}
+      ]
     },
     "openrouter": {
       "api_key": "sk-or-v1-xxx",
-      "api_base": ""
+      "api_base": "",
+      "profiles": [
+        {"name": "fast", "api_key": "sk-or-v1-xxx1", "weight": 10},
+        {"name": "cheap", "api_key": "sk-or-v1-xxx2", "weight": 5}
+      ]
     },
     "groq": {
       "api_key": "gsk_xxx",
@@ -132,5 +147,43 @@
   "gateway": {
     "host": "0.0.0.0",
     "port": 18790
+  },
+  "hooks": {
+    "enabled": false,
+    "scripts_dir": "~/.picoclaw/hooks",
+    "events": {
+      "pre_tool": {"enabled": false, "script": "pre_tool.sh"},
+      "post_tool": {"enabled": false, "script": "post_tool.sh"},
+      "pre_llm": {"enabled": false, "script": "pre_llm.sh"},
+      "post_llm": {"enabled": false, "script": "post_llm.sh"},
+      "on_error": {"enabled": false, "script": "error_handler.sh"},
+      "on_message": {"enabled": false, "script": "message_received.sh"},
+      "on_message_sent": {"enabled": false, "script": "message_sent.sh"}
+    }
+  },
+  "voice": {
+    "enabled": false,
+    "provider": "openai",
+    "voice": "alloy",
+    "model": "tts-1",
+    "speed": 1.0,
+    "cache_enabled": true,
+    "cache_dir": "~/.picoclaw/cache/tts",
+    "openai": {
+      "api_key": "",
+      "api_base": "https://api.openai.com/v1",
+      "model": "tts-1",
+      "voice": "alloy",
+      "speed": "1.0",
+      "response": "mp3"
+    },
+    "elevenlabs": {
+      "api_key": "",
+      "base_url": "https://api.elevenlabs.io/v1",
+      "voice_id": "21m00Tcm4TlvDq8ikWAM",
+      "model_id": "eleven_multilingual_v2",
+      "language_code": "en",
+      "seed": 0
+    }
   }
 }

@@ -51,6 +51,8 @@ type Config struct {
 	Tools     ToolsConfig     `json:"tools"`
 	Heartbeat HeartbeatConfig `json:"heartbeat"`
 	Devices   DevicesConfig   `json:"devices"`
+	Hooks     HooksConfig     `json:"hooks"`
+	Voice     VoiceConfig     `json:"voice"`
 	mu        sync.RWMutex
 }
 
@@ -59,13 +61,16 @@ type AgentsConfig struct {
 }
 
 type AgentDefaults struct {
-	Workspace           string  `json:"workspace" env:"PICOCLAW_AGENTS_DEFAULTS_WORKSPACE"`
-	RestrictToWorkspace bool    `json:"restrict_to_workspace" env:"PICOCLAW_AGENTS_DEFAULTS_RESTRICT_TO_WORKSPACE"`
-	Provider            string  `json:"provider" env:"PICOCLAW_AGENTS_DEFAULTS_PROVIDER"`
-	Model               string  `json:"model" env:"PICOCLAW_AGENTS_DEFAULTS_MODEL"`
-	MaxTokens           int     `json:"max_tokens" env:"PICOCLAW_AGENTS_DEFAULTS_MAX_TOKENS"`
-	Temperature         float64 `json:"temperature" env:"PICOCLAW_AGENTS_DEFAULTS_TEMPERATURE"`
-	MaxToolIterations   int     `json:"max_tool_iterations" env:"PICOCLAW_AGENTS_DEFAULTS_MAX_TOOL_ITERATIONS"`
+	Workspace           string   `json:"workspace" env:"PICOCLAW_AGENTS_DEFAULTS_WORKSPACE"`
+	RestrictToWorkspace bool     `json:"restrict_to_workspace" env:"PICOCLAW_AGENTS_DEFAULTS_RESTRICT_TO_WORKSPACE"`
+	Provider            string   `json:"provider" env:"PICOCLAW_AGENTS_DEFAULTS_PROVIDER"`
+	Model               string   `json:"model" env:"PICOCLAW_AGENTS_DEFAULTS_MODEL"`
+	ModelFallbacks      []string `json:"model_fallbacks" env:"PICOCLAW_AGENTS_DEFAULTS_MODEL_FALLBACKS"`
+	MaxTokens           int      `json:"max_tokens" env:"PICOCLAW_AGENTS_DEFAULTS_MAX_TOKENS"`
+	MaxContextTokens    int      `json:"max_context_tokens" env:"PICOCLAW_AGENTS_DEFAULTS_MAX_CONTEXT_TOKENS"`
+	Temperature         float64  `json:"temperature" env:"PICOCLAW_AGENTS_DEFAULTS_TEMPERATURE"`
+	MaxToolIterations   int      `json:"max_tool_iterations" env:"PICOCLAW_AGENTS_DEFAULTS_MAX_TOOL_ITERATIONS"`
+	TruncationStrategy  string   `json:"truncation_strategy" env:"PICOCLAW_AGENTS_DEFAULTS_TRUNCATION_STRATEGY"`
 }
 
 type ChannelsConfig struct {
@@ -166,6 +171,20 @@ type DevicesConfig struct {
 	MonitorUSB bool `json:"monitor_usb" env:"PICOCLAW_DEVICES_MONITOR_USB"`
 }
 
+// HookEventConfig holds configuration for a specific hook event type
+type HookEventConfig struct {
+	Enabled bool   `json:"enabled"`
+	Script  string `json:"script,omitempty"`
+	Timeout int    `json:"timeout,omitempty"` // seconds
+}
+
+// HooksConfig holds the hooks system configuration
+type HooksConfig struct {
+	Enabled    bool                     `json:"enabled" env:"PICOCLAW_HOOKS_ENABLED"`
+	ScriptsDir string                   `json:"scripts_dir" env:"PICOCLAW_HOOKS_SCRIPTS_DIR"`
+	Events     map[string]HookEventConfig `json:"events"`
+}
+
 type ProvidersConfig struct {
 	Anthropic     ProviderConfig `json:"anthropic"`
 	OpenAI        ProviderConfig `json:"openai"`
@@ -180,14 +199,24 @@ type ProvidersConfig struct {
 	ShengSuanYun  ProviderConfig `json:"shengsuanyun"`
 	DeepSeek      ProviderConfig `json:"deepseek"`
 	GitHubCopilot ProviderConfig `json:"github_copilot"`
+	IFlowCLI      ProviderConfig `json:"iflow_cli"`
 }
 
 type ProviderConfig struct {
-	APIKey      string `json:"api_key" env:"PICOCLAW_PROVIDERS_{{.Name}}_API_KEY"`
-	APIBase     string `json:"api_base" env:"PICOCLAW_PROVIDERS_{{.Name}}_API_BASE"`
-	Proxy       string `json:"proxy,omitempty" env:"PICOCLAW_PROVIDERS_{{.Name}}_PROXY"`
-	AuthMethod  string `json:"auth_method,omitempty" env:"PICOCLAW_PROVIDERS_{{.Name}}_AUTH_METHOD"`
-	ConnectMode string `json:"connect_mode,omitempty" env:"PICOCLAW_PROVIDERS_{{.Name}}_CONNECT_MODE"` //only for Github Copilot, `stdio` or `grpc`
+	APIKey      string              `json:"api_key" env:"PICOCLAW_PROVIDERS_{{.Name}}_API_KEY"`
+	APIBase     string              `json:"api_base" env:"PICOCLAW_PROVIDERS_{{.Name}}_API_BASE"`
+	Proxy       string              `json:"proxy,omitempty" env:"PICOCLAW_PROVIDERS_{{.Name}}_PROXY"`
+	AuthMethod  string              `json:"auth_method,omitempty" env:"PICOCLAW_PROVIDERS_{{.Name}}_AUTH_METHOD"`
+	ConnectMode string              `json:"connect_mode,omitempty" env:"PICOCLAW_PROVIDERS_{{.Name}}_CONNECT_MODE"` //only for Github Copilot, `stdio` or `grpc`
+	Profiles    []AuthProfileConfig `json:"profiles,omitempty"`
+}
+
+// AuthProfileConfig represents an auth profile configuration
+type AuthProfileConfig struct {
+	Name     string `json:"name"`
+	APIKey   string `json:"api_key"`
+	Weight   int    `json:"weight"` // For load balancing, higher = more preferred
+	Disabled bool   `json:"disabled"`
 }
 
 type GatewayConfig struct {
@@ -215,6 +244,39 @@ type ToolsConfig struct {
 	Web WebToolsConfig `json:"web"`
 }
 
+// VoiceConfig holds the TTS (Text-to-Speech) configuration
+type VoiceConfig struct {
+	Enabled      bool             `json:"enabled" env:"PICOCLAW_VOICE_ENABLED"`
+	Provider     string           `json:"provider" env:"PICOCLAW_VOICE_PROVIDER"`
+	Voice        string           `json:"voice" env:"PICOCLAW_VOICE_VOICE"`
+	Model        string           `json:"model" env:"PICOCLAW_VOICE_MODEL"`
+	Speed        float64          `json:"speed" env:"PICOCLAW_VOICE_SPEED"`
+	CacheEnabled bool             `json:"cache_enabled" env:"PICOCLAW_VOICE_CACHE_ENABLED"`
+	CacheDir     string           `json:"cache_dir" env:"PICOCLAW_VOICE_CACHE_DIR"`
+	OpenAI       OpenAIVoiceConfig `json:"openai"`
+	ElevenLabs   ElevenLabsVoiceConfig `json:"elevenlabs"`
+}
+
+// OpenAIVoiceConfig holds OpenAI TTS specific configuration
+type OpenAIVoiceConfig struct {
+	APIKey   string `json:"api_key" env:"PICOCLAW_VOICE_OPENAI_API_KEY"`
+	APIBase  string `json:"api_base" env:"PICOCLAW_VOICE_OPENAI_API_BASE"`
+	Model    string `json:"model" env:"PICOCLAW_VOICE_OPENAI_MODEL"`
+	Voice    string `json:"voice" env:"PICOCLAW_VOICE_OPENAI_VOICE"`
+	Speed    string `json:"speed" env:"PICOCLAW_VOICE_OPENAI_SPEED"`
+	Response string `json:"response" env:"PICOCLAW_VOICE_OPENAI_RESPONSE"`
+}
+
+// ElevenLabsVoiceConfig holds ElevenLabs specific configuration
+type ElevenLabsVoiceConfig struct {
+	APIKey       string `json:"api_key" env:"PICOCLAW_VOICE_ELEVENLABS_API_KEY"`
+	BaseURL      string `json:"base_url" env:"PICOCLAW_VOICE_ELEVENLABS_BASE_URL"`
+	VoiceID      string `json:"voice_id" env:"PICOCLAW_VOICE_ELEVENLABS_VOICE_ID"`
+	ModelID      string `json:"model_id" env:"PICOCLAW_VOICE_ELEVENLABS_MODEL_ID"`
+	LanguageCode string `json:"language_code" env:"PICOCLAW_VOICE_ELEVENLABS_LANGUAGE_CODE"`
+	Seed         int    `json:"seed" env:"PICOCLAW_VOICE_ELEVENLABS_SEED"`
+}
+
 func DefaultConfig() *Config {
 	return &Config{
 		Agents: AgentsConfig{
@@ -224,8 +286,10 @@ func DefaultConfig() *Config {
 				Provider:            "",
 				Model:               "glm-4.7",
 				MaxTokens:           8192,
+				MaxContextTokens:    100000, // Default 100K tokens context window
 				Temperature:         0.7,
 				MaxToolIterations:   20,
+				TruncationStrategy:  "remove_oldest", // Default strategy
 			},
 		},
 		Channels: ChannelsConfig{
@@ -330,6 +394,36 @@ func DefaultConfig() *Config {
 		Devices: DevicesConfig{
 			Enabled:    false,
 			MonitorUSB: true,
+		},
+		Hooks: HooksConfig{
+			Enabled:    false,
+			ScriptsDir: "~/.picoclaw/hooks",
+			Events:     map[string]HookEventConfig{},
+		},
+		Voice: VoiceConfig{
+			Enabled:      false,
+			Provider:    "openai",
+			Voice:       "alloy",
+			Model:        "tts-1",
+			Speed:        1.0,
+			CacheEnabled: true,
+			CacheDir:     "~/.picoclaw/cache/tts",
+			OpenAI: OpenAIVoiceConfig{
+				APIKey:   "",
+				APIBase:  "https://api.openai.com/v1",
+				Model:    "tts-1",
+				Voice:    "alloy",
+				Speed:    "1.0",
+				Response: "mp3",
+			},
+			ElevenLabs: ElevenLabsVoiceConfig{
+				APIKey:       "",
+				BaseURL:      "https://api.elevenlabs.io/v1",
+				VoiceID:      "21m00Tcm4TlvDq8ikWAM",
+				ModelID:      "eleven_multilingual_v2",
+				LanguageCode: "en",
+				Seed:         0,
+			},
 		},
 	}
 }

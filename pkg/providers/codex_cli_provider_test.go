@@ -583,3 +583,123 @@ func TestCodexCliProvider_Integration(t *testing.T) {
 		t.Errorf("Content = %q, expected to contain 'hello'", resp.Content)
 	}
 }
+
+// --- iFlow CLI Provider Tests ---
+
+func TestNewIFlowCliProvider(t *testing.T) {
+	p := NewIFlowCliProvider("/tmp/workspace")
+	if p.command != "iflow" {
+		t.Errorf("command = %q, want %q", p.command, "iflow")
+	}
+	if p.providerType != CLIProviderIFlow {
+		t.Errorf("providerType = %q, want %q", p.providerType, CLIProviderIFlow)
+	}
+	if p.GetDefaultModel() != "iflow-cli" {
+		t.Errorf("GetDefaultModel() = %q, want %q", p.GetDefaultModel(), "iflow-cli")
+	}
+}
+
+func TestNewCodexCliProviderWithCommand(t *testing.T) {
+	// Test with iflow command
+	p1 := NewCodexCliProviderWithCommand("iflow", "/workspace")
+	if p1.command != "iflow" {
+		t.Errorf("command = %q, want %q", p1.command, "iflow")
+	}
+	if p1.providerType != CLIProviderIFlow {
+		t.Errorf("providerType = %q, want %q", p1.providerType, CLIProviderIFlow)
+	}
+
+	// Test with codex command
+	p2 := NewCodexCliProviderWithCommand("codex", "/workspace")
+	if p2.command != "codex" {
+		t.Errorf("command = %q, want %q", p2.command, "codex")
+	}
+	if p2.providerType != CLIProviderCodex {
+		t.Errorf("providerType = %q, want %q", p2.providerType, CLIProviderCodex)
+	}
+
+	// Test with custom command
+	p3 := NewCodexCliProviderWithCommand("my-custom-cli", "/workspace")
+	if p3.command != "my-custom-cli" {
+		t.Errorf("command = %q, want %q", p3.command, "my-custom-cli")
+	}
+}
+
+func TestIFlowCliProvider_MockCLI(t *testing.T) {
+	tmpDir := t.TempDir()
+	scriptPath := filepath.Join(tmpDir, "iflow")
+	script := `#!/bin/bash
+echo '{"type":"item.completed","item":{"id":"1","type":"agent_message","text":"iFlow response"}}'
+echo '{"type":"turn.completed"}'`
+
+	if err := os.WriteFile(scriptPath, []byte(script), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	p := &CodexCliProvider{
+		command:      scriptPath,
+		workspace:    "",
+		providerType: CLIProviderIFlow,
+	}
+
+	messages := []Message{{Role: "user", Content: "test"}}
+	resp, err := p.Chat(context.Background(), messages, nil, "", nil)
+	if err != nil {
+		t.Fatalf("Chat() error: %v", err)
+	}
+	if resp.Content != "iFlow response" {
+		t.Errorf("Content = %q, want %q", resp.Content, "iFlow response")
+	}
+}
+
+func TestIFlowCliProvider_GetProviderType(t *testing.T) {
+	p := NewIFlowCliProvider("")
+	if p.GetProviderType() != CLIProviderIFlow {
+		t.Errorf("GetProviderType() = %q, want %q", p.GetProviderType(), CLIProviderIFlow)
+	}
+
+	p2 := NewCodexCliProvider("")
+	if p2.GetProviderType() != CLIProviderCodex {
+		t.Errorf("GetProviderType() = %q, want %q", p2.GetProviderType(), CLIProviderCodex)
+	}
+}
+
+func TestBuildCLIArgs_IFlow(t *testing.T) {
+	p := &CodexCliProvider{
+		command:      "iflow",
+		workspace:    "/workspace",
+		providerType: CLIProviderIFlow,
+	}
+
+	args := p.buildCLIArgs("gpt-4")
+
+	// Check standard args
+	if !containsStr(args, "exec") {
+		t.Error("args should contain 'exec'")
+	}
+	if !containsStr(args, "--json") {
+		t.Error("args should contain '--json'")
+	}
+	if !containsStr(args, "-m") {
+		t.Error("args should contain '-m'")
+	}
+	if !containsStr(args, "-C") {
+		t.Error("args should contain '-C'")
+	}
+	if !containsStr(args, "/workspace") {
+		t.Error("args should contain workspace path")
+	}
+	if !containsStr(args, "gpt-4") {
+		t.Error("args should contain model name")
+	}
+}
+
+// Helper function to check if a slice contains a string
+func containsStr(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}

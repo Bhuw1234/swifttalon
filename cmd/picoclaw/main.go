@@ -128,7 +128,7 @@ func main() {
 	command := os.Args[1]
 
 	switch command {
-	case "onboard":
+	case "onboard", "init":
 		onboard()
 	case "agent":
 		agentCmd()
@@ -205,7 +205,8 @@ func printHelp() {
 	fmt.Println("Usage: picoclaw <command>")
 	fmt.Println()
 	fmt.Println("Commands:")
-	fmt.Println("  onboard     Initialize picoclaw configuration and workspace")
+	fmt.Println("  init        Initialize picoclaw configuration and workspace")
+	fmt.Println("  onboard     (alias for init)")
 	fmt.Println("  agent       Interact with the agent directly")
 	fmt.Println("  auth        Manage authentication (login, logout, status)")
 	fmt.Println("  gateway     Start picoclaw gateway")
@@ -239,11 +240,34 @@ func onboard() {
 	workspace := cfg.WorkspacePath()
 	createWorkspaceTemplates(workspace)
 
+	// Create additional directories
+	homeDir := filepath.Dir(configPath)
+	dirsToCreate := []string{
+		filepath.Join(homeDir, "hooks"),
+		filepath.Join(homeDir, "cache", "tts"),
+		filepath.Join(workspace, "sessions"),
+		filepath.Join(workspace, "state"),
+		filepath.Join(workspace, "cron"),
+	}
+	for _, dir := range dirsToCreate {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			fmt.Printf("Warning: Could not create directory %s: %v\n", dir, err)
+		}
+	}
+
 	fmt.Printf("%s picoclaw is ready!\n", logo)
+	fmt.Printf("\nConfiguration: %s\n", configPath)
+	fmt.Printf("Workspace: %s\n", workspace)
 	fmt.Println("\nNext steps:")
-	fmt.Println("  1. Add your API key to", configPath)
+	fmt.Println("  1. Add your API key to config.json")
 	fmt.Println("     Get one at: https://openrouter.ai/keys")
 	fmt.Println("  2. Chat: picoclaw agent -m \"Hello!\"")
+	fmt.Println("\nFeatures:")
+	fmt.Println("  • Model fallbacks - Set model_fallbacks in config for automatic failover")
+	fmt.Println("  • Hooks - Add scripts to ~/.picoclaw/hooks/ for event automation")
+	fmt.Println("  • Voice/TTS - Enable text-to-speech in config.json")
+	fmt.Println("  • Multi-key profiles - Configure multiple API keys per provider")
+	fmt.Println("\nFor more info: picoclaw --help")
 }
 
 func copyEmbeddedToTarget(targetDir string) error {
@@ -404,6 +428,7 @@ func agentCmd() {
 		fmt.Printf("Error creating provider: %v\n", err)
 		os.Exit(1)
 	}
+	provider = agent.CreateProviderWithFallback(cfg, provider)
 
 	msgBus := bus.NewMessageBus()
 	agentLoop := agent.NewAgentLoop(cfg, msgBus, provider)
@@ -539,6 +564,7 @@ func gatewayCmd() {
 		fmt.Printf("Error creating provider: %v\n", err)
 		os.Exit(1)
 	}
+	provider = agent.CreateProviderWithFallback(cfg, provider)
 
 	msgBus := bus.NewMessageBus()
 	agentLoop := agent.NewAgentLoop(cfg, msgBus, provider)
