@@ -18,7 +18,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sipeed/picoclaw/pkg/logger"
+	"github.com/Bhuw1234/swifttalon/pkg/logger"
 )
 
 // HookType represents the type of hook event

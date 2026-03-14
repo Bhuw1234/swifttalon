@@ -1,4 +1,4 @@
-module github.com/sipeed/picoclaw
+module github.com/Bhuw1234/swifttalon
 
 go 1.25.7
 

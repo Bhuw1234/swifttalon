@@ -11,9 +11,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/Bhuw1234/swifttalon/pkg/config"
+	"github.com/Bhuw1234/swifttalon/pkg/logger"
+	"github.com/Bhuw1234/swifttalon/pkg/providers"
 )
 
 // FallbackAttempt records a single fallback attempt

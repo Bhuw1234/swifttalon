@@ -18,17 +18,17 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/channels"
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/constants"
-	"github.com/sipeed/picoclaw/pkg/hooks"
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/providers"
-	"github.com/sipeed/picoclaw/pkg/session"
-	"github.com/sipeed/picoclaw/pkg/state"
-	"github.com/sipeed/picoclaw/pkg/tools"
-	"github.com/sipeed/picoclaw/pkg/utils"
+	"github.com/Bhuw1234/swifttalon/pkg/bus"
+	"github.com/Bhuw1234/swifttalon/pkg/channels"
+	"github.com/Bhuw1234/swifttalon/pkg/config"
+	"github.com/Bhuw1234/swifttalon/pkg/constants"
+	"github.com/Bhuw1234/swifttalon/pkg/hooks"
+	"github.com/Bhuw1234/swifttalon/pkg/logger"
+	"github.com/Bhuw1234/swifttalon/pkg/providers"
+	"github.com/Bhuw1234/swifttalon/pkg/session"
+	"github.com/Bhuw1234/swifttalon/pkg/state"
+	"github.com/Bhuw1234/swifttalon/pkg/tools"
+	"github.com/Bhuw1234/swifttalon/pkg/utils"
 )
 
 type AgentLoop struct {

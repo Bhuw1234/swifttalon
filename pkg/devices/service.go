@@ -5,12 +5,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/constants"
-	"github.com/sipeed/picoclaw/pkg/devices/events"
-	"github.com/sipeed/picoclaw/pkg/devices/sources"
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/state"
+	"github.com/Bhuw1234/swifttalon/pkg/bus"
+	"github.com/Bhuw1234/swifttalon/pkg/constants"
+	"github.com/Bhuw1234/swifttalon/pkg/devices/events"
+	"github.com/Bhuw1234/swifttalon/pkg/devices/sources"
+	"github.com/Bhuw1234/swifttalon/pkg/logger"
+	"github.com/Bhuw1234/swifttalon/pkg/state"
 )
 
 type Service struct {

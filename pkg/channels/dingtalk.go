@@ -10,10 +10,10 @@ import (
 
 	"github.com/open-dingtalk/dingtalk-stream-sdk-go/chatbot"
 	"github.com/open-dingtalk/dingtalk-stream-sdk-go/client"
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/utils"
+	"github.com/Bhuw1234/swifttalon/pkg/bus"
+	"github.com/Bhuw1234/swifttalon/pkg/config"
+	"github.com/Bhuw1234/swifttalon/pkg/logger"
+	"github.com/Bhuw1234/swifttalon/pkg/utils"
 )
 
 // DingTalkChannel implements the Channel interface for DingTalk (钉钉)

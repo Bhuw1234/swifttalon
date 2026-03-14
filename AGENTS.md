@@ -1,20 +1,20 @@
-# PicoClaw 项目指南
+# SwiftTalon 项目指南
 
-PicoClaw 是一个超轻量级的个人 AI 助手，使用 Go 语言开发，可以在 10 美元硬件上运行，内存占用 <10MB。
+SwiftTalon 是一个超轻量级的个人 AI 助手，使用 Go 语言开发，可以在 10 美元硬件上运行，内存占用 <10MB。
 
 ## 项目概述
 
 - **编程语言**: Go 1.25+
 - **许可证**: MIT
-- **官网**: https://picoclaw.io
-- **GitHub**: https://github.com/sipeed/picoclaw
+- **官网**: https://swifttalon.io
+- **GitHub**: https://github.com/Bhuw1234/swifttalon
 - **硬件支持**: x86_64, ARM64, RISC-V (Linux)
 
 ## 项目结构
 
 ```
-/home/bhuwan/picoclaw/
-├── cmd/picoclaw/          # CLI 入口点
+/home/bhuwan/swifttalon/
+├── cmd/swifttalon/          # CLI 入口点
 │   └── main.go           # 主程序入口
 ├── pkg/                   # 核心包
 │   ├── agent/            # AI Agent 核心逻辑
@@ -43,7 +43,11 @@ PicoClaw 是一个超轻量级的个人 AI 助手，使用 Go 语言开发，可
 │   ├── providers/        # LLM 提供商
 │   │   ├── http_provider.go      # HTTP 提供商基类
 │   │   ├── claude_provider.go    # Anthropic Claude
+│   │   ├── claude_cli_provider.go # Claude CLI
 │   │   ├── copilot_provider.go   # GitHub Copilot
+│   │   ├── github_copilot_provider.go # GitHub Copilot v2
+│   │   ├── codex_provider.go     # OpenAI Codex
+│   │   ├── codex_cli_provider.go # Codex CLI / iFlow CLI
 │   │   ├── profile_provider.go   # 多密钥轮换
 │   │   └── ...
 │   ├── session/          # 会话管理
@@ -94,7 +98,7 @@ make deps
 ### 构建
 
 ```bash
-# 构建当前平台
+# 生成嵌入文件并构建当前平台
 make build
 
 # 构建所有平台
@@ -115,19 +119,19 @@ make uninstall-all
 
 ```bash
 # 初始化配置
-picoclaw init
+swifttalon init
 
 # 与 Agent 对话 (单条消息)
-picoclaw agent -m "你好"
+swifttalon agent -m "你好"
 
 # 交互式对话模式
-picoclaw agent
+swifttalon agent
 
 # 启动网关 (多渠道支持)
-picoclaw gateway
+swifttalon gateway
 
 # 查看状态
-picoclaw status
+swifttalon status
 ```
 
 ### Docker 运行
@@ -147,125 +151,125 @@ docker compose --profile gateway up -d
 
 | 命令 | 描述 |
 |------|------|
-| `picoclaw init` | 初始化配置和工作区 |
-| `picoclaw onboard` | (init 的别名) |
-| `picoclaw agent -m "..."` | 与 Agent 对话 |
-| `picoclaw agent` | 交互式对话模式 |
-| `picoclaw gateway` | 启动网关 (多渠道) |
-| `picoclaw status` | 查看状态 |
-| `picoclaw auth` | 管理认证 (login/logout/status) |
-| `picoclaw cron` | 管理定时任务 |
-| `picoclaw migrate` | 从 OpenClaw 迁移 |
-| `picoclaw skills` | 管理技能 |
-| `picoclaw version` | 查看版本 |
+| `swifttalon init` | 初始化配置和工作区 |
+| `swifttalon onboard` | (init 的别名) |
+| `swifttalon agent -m "..."` | 与 Agent 对话 |
+| `swifttalon agent` | 交互式对话模式 |
+| `swifttalon gateway` | 启动网关 (多渠道) |
+| `swifttalon status` | 查看状态 |
+| `swifttalon auth` | 管理认证 (login/logout/status) |
+| `swifttalon cron` | 管理定时任务 |
+| `swifttalon migrate` | 从 OpenClaw 迁移 |
+| `swifttalon skills` | 管理技能 |
+| `swifttalon version` | 查看版本 |
 
 ### Agent 命令选项
 
 ```bash
 # 调试模式
-picoclaw agent -d
-picoclaw agent --debug
+swifttalon agent -d
+swifttalon agent --debug
 
 # 指定消息
-picoclaw agent -m "你好"
-picoclaw agent --message "你好"
+swifttalon agent -m "你好"
+swifttalon agent --message "你好"
 
 # 指定会话
-picoclaw agent -s session_name
-picoclaw agent --session session_name
+swifttalon agent -s session_name
+swifttalon agent --session session_name
 ```
 
 ### Gateway 命令选项
 
 ```bash
 # 调试模式
-picoclaw gateway -d
-picoclaw gateway --debug
+swifttalon gateway -d
+swifttalon gateway --debug
 ```
 
 ### Auth 命令
 
 ```bash
 # 登录 (OAuth 或 Token)
-picoclaw auth login --provider openai
-picoclaw auth login --provider openai --device-code  # headless 环境
-picoclaw auth login --provider anthropic
-picoclaw auth login --provider github-copilot
+swifttalon auth login --provider openai
+swifttalon auth login --provider openai --device-code  # headless 环境
+swifttalon auth login --provider anthropic
+swifttalon auth login --provider github-copilot
 
 # 登出
-picoclaw auth logout --provider openai
-picoclaw auth logout  # 登出所有
+swifttalon auth logout --provider openai
+swifttalon auth logout  # 登出所有
 
 # 查看状态
-picoclaw auth status
+swifttalon auth status
 ```
 
 ### Cron 命令
 
 ```bash
 # 列出所有定时任务
-picoclaw cron list
+swifttalon cron list
 
 # 添加定时任务
-picoclaw cron add -n "任务名称" -m "Agent 消息" -e 60          # 每 60 秒执行
-picoclaw cron add -n "任务名称" -m "Agent 消息" -c "0 9 * * *"  # Cron 表达式
+swifttalon cron add -n "任务名称" -m "Agent 消息" -e 60          # 每 60 秒执行
+swifttalon cron add -n "任务名称" -m "Agent 消息" -c "0 9 * * *"  # Cron 表达式
 
 # 启用/禁用任务
-picoclaw cron enable <job_id>
-picoclaw cron disable <job_id>
+swifttalon cron enable <job_id>
+swifttalon cron disable <job_id>
 
 # 删除任务
-picoclaw cron remove <job_id>
+swifttalon cron remove <job_id>
 ```
 
 ### Skills 命令
 
 ```bash
 # 列出已安装技能
-picoclaw skills list
+swifttalon skills list
 
 # 从 GitHub 安装技能
-picoclaw skills install sipeed/picoclaw-skills/weather
+swifttalon skills install sipeed/swifttalon-skills/weather
 
 # 安装内置技能
-picoclaw skills install-builtin
+swifttalon skills install-builtin
 
 # 列出内置技能
-picoclaw skills list-builtin
+swifttalon skills list-builtin
 
 # 删除技能
-picoclaw skills remove <skill-name>
+swifttalon skills remove <skill-name>
 
 # 搜索可用技能
-picoclaw skills search
+swifttalon skills search
 
 # 查看技能详情
-picoclaw skills show <skill-name>
+swifttalon skills show <skill-name>
 ```
 
 ### Migrate 命令
 
 ```bash
 # 从 OpenClaw 迁移
-picoclaw migrate
+swifttalon migrate
 
 # 模拟运行 (不实际修改)
-picoclaw migrate --dry-run
+swifttalon migrate --dry-run
 
 # 仅迁移配置
-picoclaw migrate --config-only
+swifttalon migrate --config-only
 
 # 仅迁移工作区
-picoclaw migrate --workspace-only
+swifttalon migrate --workspace-only
 
 # 强制执行
-picoclaw migrate --force
+swifttalon migrate --force
 
 # 刷新工作区文件
-picoclaw migrate --refresh
+swifttalon migrate --refresh
 
 # 指定 OpenClaw 目录
-picoclaw migrate --openclaw-home ~/.openclaw
+swifttalon migrate --openclaw-home ~/.openclaw
 ```
 
 ## 支持的通讯渠道
@@ -294,7 +298,6 @@ picoclaw migrate --openclaw-home ~/.openclaw
 - Ollama (本地)
 - NVIDIA NIM
 - DeepSeek
-- ShengSuanYun (生算云)
 - Claude CLI
 - Codex CLI
 - iFlow CLI
@@ -302,12 +305,12 @@ picoclaw migrate --openclaw-home ~/.openclaw
 
 ## Agent 工具
 
-PicoClaw Agent 内置以下工具:
+SwiftTalon Agent 内置以下工具:
 
 - **Filesystem**: 文件系统操作 (读取、写入、列出目录等)
 - **Shell**: 执行 Shell 命令
 - **Message**: 发送消息到各个渠道
-- **Web**: 网页搜索 (Brave Search、DuckDuckGo)
+- **Web**: 网页搜索 (Brave Search)
 - **Link**: URL 内容提取和 AI 摘要
 - **Edit**: 代码编辑 (基于 ollama/editor)
 - **Subagent**: 子代理 (嵌套 Agent)
@@ -358,7 +361,7 @@ PicoClaw Agent 内置以下工具:
 {
   "hooks": {
     "enabled": true,
-    "scripts_dir": "~/.picoclaw/hooks",
+    "scripts_dir": "~/.swifttalon/hooks",
     "events": {
       "pre_tool": {"enabled": true, "script": "pre_tool.sh"},
       "post_tool": {"enabled": true, "script": "post_tool.sh"},
@@ -379,6 +382,8 @@ PicoClaw Agent 内置以下工具:
     "provider": "openai",
     "voice": "alloy",
     "model": "tts-1",
+    "speed": 1.0,
+    "cache_enabled": true,
     "openai": {
       "api_key": "sk-xxx",
       "voice": "alloy"
@@ -436,7 +441,7 @@ OpenAI 可用声音: alloy, echo, fable, onyx, nova, shimmer, ash, ballad, coral
 ## 工作区结构
 
 ```
-~/.picoclaw/
+~/.swifttalon/
 ├── config.json           # 配置文件
 ├── workspace/           # 工作区
 │   ├── sessions/       # 对话会话历史
@@ -457,53 +462,63 @@ OpenAI 可用声音: alloy, echo, fable, onyx, nova, shimmer, ash, ballad, coral
 
 ## 配置说明
 
-配置文件位于 `~/.picoclaw/config.json`:
+配置文件位于 `~/.swifttalon/config.json`:
 
 ```json
 {
   "agents": {
     "defaults": {
-      "workspace": "~/.picoclaw/workspace",
+      "workspace": "~/.swifttalon/workspace",
+      "restrict_to_workspace": true,
       "model": "glm-4.7",
       "model_fallbacks": ["claude-3-haiku-20240307", "gpt-4o-mini"],
       "max_tokens": 8192,
       "max_context_tokens": 100000,
       "truncation_strategy": "remove_oldest",
       "temperature": 0.7,
-      "restrict_to_workspace": true,
       "max_tool_iterations": 20
     }
   },
   "providers": {
+    "anthropic": {
+      "api_key": "",
+      "api_base": "",
+      "profiles": [
+        {"name": "profile1", "api_key": "sk-ant-xxx1", "weight": 10},
+        {"name": "profile2", "api_key": "sk-ant-xxx2", "weight": 5}
+      ]
+    },
+    "openai": {
+      "api_key": "",
+      "api_base": "",
+      "profiles": [
+        {"name": "primary", "api_key": "sk-xxx1", "weight": 10},
+        {"name": "backup", "api_key": "sk-xxx2", "weight": 5, "disabled": false}
+      ]
+    },
     "openrouter": {
       "api_key": "sk-or-v1-xxx",
+      "api_base": "",
       "profiles": [
         {"name": "fast", "api_key": "sk-or-v1-xxx1", "weight": 10},
         {"name": "cheap", "api_key": "sk-or-v1-xxx2", "weight": 5}
       ]
     },
-    "anthropic": {
-      "api_key": ""
-    },
-    "openai": {
-      "api_key": ""
-    },
     "groq": {
-      "api_key": "gsk_xxx"
-    },
-    "gemini": {
-      "api_key": ""
+      "api_key": "gsk_xxx",
+      "api_base": ""
     },
     "zhipu": {
-      "api_key": ""
+      "api_key": "YOUR_ZHIPU_API_KEY",
+      "api_base": ""
+    },
+    "gemini": {
+      "api_key": "",
+      "api_base": ""
     },
     "vllm": {
       "api_key": "",
       "api_base": ""
-    },
-    "ollama": {
-      "api_key": "",
-      "api_base": "http://localhost:11434/v1"
     },
     "nvidia": {
       "api_key": "nvapi-xxx",
@@ -511,14 +526,12 @@ OpenAI 可用声音: alloy, echo, fable, onyx, nova, shimmer, ash, ballad, coral
       "proxy": "http://127.0.0.1:7890"
     },
     "moonshot": {
-      "api_key": "sk-xxx"
+      "api_key": "sk-xxx",
+      "api_base": ""
     },
-    "deepseek": {
-      "api_key": "sk-xxx"
-    },
-    "github_copilot": {
+    "ollama": {
       "api_key": "",
-      "connect_mode": "stdio"
+      "api_base": "http://localhost:11434/v1"
     },
     "iflow_cli": {
       "api_base": ""
@@ -527,18 +540,70 @@ OpenAI 可用声音: alloy, echo, fable, onyx, nova, shimmer, ash, ballad, coral
   "channels": {
     "telegram": {
       "enabled": false,
-      "token": "YOUR_BOT_TOKEN",
+      "token": "YOUR_TELEGRAM_BOT_TOKEN",
       "proxy": "",
       "allow_from": ["YOUR_USER_ID"]
     },
     "discord": {
       "enabled": false,
-      "token": "YOUR_DISCORD_BOT_TOKEN"
+      "token": "YOUR_DISCORD_BOT_TOKEN",
+      "allow_from": []
+    },
+    "maixcam": {
+      "enabled": false,
+      "host": "0.0.0.0",
+      "port": 18790,
+      "allow_from": []
+    },
+    "whatsapp": {
+      "enabled": false,
+      "bridge_url": "ws://localhost:3001",
+      "allow_from": []
+    },
+    "feishu": {
+      "enabled": false,
+      "app_id": "",
+      "app_secret": "",
+      "encrypt_key": "",
+      "verification_token": "",
+      "allow_from": []
+    },
+    "dingtalk": {
+      "enabled": false,
+      "client_id": "YOUR_CLIENT_ID",
+      "client_secret": "YOUR_CLIENT_SECRET",
+      "allow_from": []
     },
     "slack": {
       "enabled": false,
-      "bot_token": "xoxb-xxx",
-      "app_token": "xapp-xxx"
+      "bot_token": "xoxb-YOUR-BOT-TOKEN",
+      "app_token": "xapp-YOUR-APP-TOKEN",
+      "allow_from": []
+    },
+    "line": {
+      "enabled": false,
+      "channel_secret": "YOUR_LINE_CHANNEL_SECRET",
+      "channel_access_token": "YOUR_LINE_CHANNEL_ACCESS_TOKEN",
+      "webhook_host": "0.0.0.0",
+      "webhook_port": 18791,
+      "webhook_path": "/webhook/line",
+      "allow_from": []
+    },
+    "onebot": {
+      "enabled": false,
+      "ws_url": "ws://127.0.0.1:3001",
+      "access_token": "",
+      "reconnect_interval": 5,
+      "group_trigger_prefix": [],
+      "allow_from": []
+    }
+  },
+  "tools": {
+    "web": {
+      "search": {
+        "api_key": "YOUR_BRAVE_API_KEY",
+        "max_results": 5
+      }
     }
   },
   "heartbeat": {
@@ -555,11 +620,15 @@ OpenAI 可用声音: alloy, echo, fable, onyx, nova, shimmer, ash, ballad, coral
   },
   "hooks": {
     "enabled": false,
-    "scripts_dir": "~/.picoclaw/hooks",
+    "scripts_dir": "~/.swifttalon/hooks",
     "events": {
       "pre_tool": {"enabled": false, "script": "pre_tool.sh"},
       "post_tool": {"enabled": false, "script": "post_tool.sh"},
-      "on_error": {"enabled": false, "script": "error_handler.sh"}
+      "pre_llm": {"enabled": false, "script": "pre_llm.sh"},
+      "post_llm": {"enabled": false, "script": "post_llm.sh"},
+      "on_error": {"enabled": false, "script": "error_handler.sh"},
+      "on_message": {"enabled": false, "script": "message_received.sh"},
+      "on_message_sent": {"enabled": false, "script": "message_sent.sh"}
     }
   },
   "voice": {
@@ -569,13 +638,22 @@ OpenAI 可用声音: alloy, echo, fable, onyx, nova, shimmer, ash, ballad, coral
     "model": "tts-1",
     "speed": 1.0,
     "cache_enabled": true,
+    "cache_dir": "~/.swifttalon/cache/tts",
     "openai": {
       "api_key": "",
-      "voice": "alloy"
+      "api_base": "https://api.openai.com/v1",
+      "model": "tts-1",
+      "voice": "alloy",
+      "speed": "1.0",
+      "response": "mp3"
     },
     "elevenlabs": {
       "api_key": "",
-      "voice_id": "21m00Tcm4TlvDq8ikWAM"
+      "base_url": "https://api.elevenlabs.io/v1",
+      "voice_id": "21m00Tcm4TlvDq8ikWAM",
+      "model_id": "eleven_multilingual_v2",
+      "language_code": "en",
+      "seed": 0
     }
   }
 }
@@ -584,13 +662,13 @@ OpenAI 可用声音: alloy, echo, fable, onyx, nova, shimmer, ash, ballad, coral
 ### 主要配置项
 
 - `agents.defaults.workspace`: 工作区目录路径
+- `agents.defaults.restrict_to_workspace`: 限制 Agent 在工作区内操作
 - `agents.defaults.model`: 默认使用的模型
 - `agents.defaults.model_fallbacks`: 模型故障转移列表
 - `agents.defaults.max_tokens`: 最大 token 数量
 - `agents.defaults.max_context_tokens`: 最大上下文 token 数量
 - `agents.defaults.truncation_strategy`: 上下文截断策略
 - `agents.defaults.temperature`: 温度参数
-- `agents.defaults.restrict_to_workspace`: 限制 Agent 在工作区内操作
 - `agents.defaults.max_tool_iterations`: 最大工具迭代次数
 - `providers.*.profiles`: 多密钥配置列表
 

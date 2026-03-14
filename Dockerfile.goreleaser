@@ -4,7 +4,7 @@ ARG TARGETPLATFORM
 
 RUN apk add --no-cache ca-certificates tzdata
 
-COPY $TARGETPLATFORM/picoclaw /usr/local/bin/picoclaw
+COPY $TARGETPLATFORM/swifttalon /usr/local/bin/swifttalon
 
-ENTRYPOINT ["picoclaw"]
+ENTRYPOINT ["swifttalon"]
 CMD ["gateway"]

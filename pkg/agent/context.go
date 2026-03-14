@@ -14,10 +14,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/providers"
-	"github.com/sipeed/picoclaw/pkg/skills"
-	"github.com/sipeed/picoclaw/pkg/tools"
+	"github.com/Bhuw1234/swifttalon/pkg/logger"
+	"github.com/Bhuw1234/swifttalon/pkg/providers"
+	"github.com/Bhuw1234/swifttalon/pkg/skills"
+	"github.com/Bhuw1234/swifttalon/pkg/tools"
 )
 
 // TruncationStrategy defines how to handle context when it exceeds the limit
@@ -141,7 +141,7 @@ func (cb *ContextBuilder) getIdentity() string {
 	// Build tools section dynamically
 	toolsSection := cb.buildToolsSection()
 
-	return fmt.Sprintf(`# picoclaw 🦞
+	return fmt.Sprintf(`# picoclaw 🐙
 
 You are picoclaw, a helpful AI assistant.
 

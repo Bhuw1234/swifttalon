@@ -3,8 +3,8 @@ package channels
 import (
 	"testing"
 
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/Bhuw1234/swifttalon/pkg/bus"
+	"github.com/Bhuw1234/swifttalon/pkg/config"
 )
 
 func TestParseSlackChatID(t *testing.T) {

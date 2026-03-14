@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/auth"
-	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/Bhuw1234/swifttalon/pkg/auth"
+	"github.com/Bhuw1234/swifttalon/pkg/config"
 )
 
 // CopilotProvider implements LLMProvider for GitHub Copilot API

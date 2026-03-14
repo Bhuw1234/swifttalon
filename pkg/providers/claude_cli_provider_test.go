@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/Bhuw1234/swifttalon/pkg/config"
 )
 
 // --- Compile-time interface check ---

@@ -11,9 +11,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/providers"
-	"github.com/sipeed/picoclaw/pkg/utils"
+	"github.com/Bhuw1234/swifttalon/pkg/logger"
+	"github.com/Bhuw1234/swifttalon/pkg/providers"
+	"github.com/Bhuw1234/swifttalon/pkg/utils"
 )
 
 // ToolLoopConfig configures the tool execution loop.

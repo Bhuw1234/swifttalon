@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/providers"
-	"github.com/sipeed/picoclaw/pkg/tools"
+	"github.com/Bhuw1234/swifttalon/pkg/bus"
+	"github.com/Bhuw1234/swifttalon/pkg/config"
+	"github.com/Bhuw1234/swifttalon/pkg/providers"
+	"github.com/Bhuw1234/swifttalon/pkg/tools"
 )
 
 // mockProvider is a simple mock LLM provider for testing

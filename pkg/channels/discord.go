@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/sipeed/picoclaw/pkg/bus"
-	"github.com/sipeed/picoclaw/pkg/config"
-	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/utils"
-	"github.com/sipeed/picoclaw/pkg/voice"
+	"github.com/Bhuw1234/swifttalon/pkg/bus"
+	"github.com/Bhuw1234/swifttalon/pkg/config"
+	"github.com/Bhuw1234/swifttalon/pkg/logger"
+	"github.com/Bhuw1234/swifttalon/pkg/utils"
+	"github.com/Bhuw1234/swifttalon/pkg/voice"
 )
 
 const (
