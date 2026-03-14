@@ -37,6 +37,7 @@ import (
 	"github.com/Bhuw1234/swifttalon/pkg/skills"
 	"github.com/Bhuw1234/swifttalon/pkg/state"
 	"github.com/Bhuw1234/swifttalon/pkg/tools"
+	"github.com/Bhuw1234/swifttalon/pkg/tui"
 	"github.com/Bhuw1234/swifttalon/pkg/voice"
 )
 
@@ -134,6 +135,8 @@ func main() {
 		agentCmd()
 	case "gateway":
 		gatewayCmd()
+	case "tui":
+		tuiCmd()
 	case "status":
 		statusCmd()
 	case "migrate":
@@ -208,6 +211,7 @@ func printHelp() {
 	fmt.Println("  init        Initialize swifttalon configuration and workspace")
 	fmt.Println("  onboard     (alias for init)")
 	fmt.Println("  agent       Interact with the agent directly")
+	fmt.Println("  tui         Start interactive TUI (Terminal User Interface)")
 	fmt.Println("  auth        Manage authentication (login, logout, status)")
 	fmt.Println("  gateway     Start swifttalon gateway")
 	fmt.Println("  status      Show swifttalon status")
@@ -539,6 +543,29 @@ func simpleInteractiveMode(agentLoop *agent.AgentLoop, sessionKey string) {
 		}
 
 		fmt.Printf("\n%s %s\n\n", logo, response)
+	}
+}
+
+func tuiCmd() {
+	// Check for --debug flag
+	args := os.Args[2:]
+	for _, arg := range args {
+		if arg == "--debug" || arg == "-d" {
+			logger.SetLevel(logger.DEBUG)
+			break
+		}
+	}
+
+	cfg, err := loadConfig()
+	if err != nil {
+		fmt.Printf("Error loading config: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Run TUI
+	if err := tui.Run(cfg); err != nil {
+		fmt.Printf("TUI error: %v\n", err)
+		os.Exit(1)
 	}
 }
 
