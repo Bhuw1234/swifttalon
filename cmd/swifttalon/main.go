@@ -135,8 +135,6 @@ func main() {
 		agentCmd()
 	case "gateway":
 		gatewayCmd()
-	case "tui":
-		tuiCmd()
 	case "status":
 		statusCmd()
 	case "migrate":
@@ -210,8 +208,7 @@ func printHelp() {
 	fmt.Println("Commands:")
 	fmt.Println("  init        Initialize swifttalon configuration and workspace")
 	fmt.Println("  onboard     (alias for init)")
-	fmt.Println("  agent       Interact with the agent directly")
-	fmt.Println("  tui         Start interactive TUI (Terminal User Interface)")
+	fmt.Println("  agent       Interactive TUI mode (add --no-tui for readline)")
 	fmt.Println("  auth        Manage authentication (login, logout, status)")
 	fmt.Println("  gateway     Start swifttalon gateway")
 	fmt.Println("  status      Show swifttalon status")
@@ -401,6 +398,7 @@ func migrateHelp() {
 func agentCmd() {
 	message := ""
 	sessionKey := "cli:default"
+	useTUI := true // Default to TUI mode
 
 	args := os.Args[2:]
 	for i := 0; i < len(args); i++ {
@@ -418,6 +416,8 @@ func agentCmd() {
 				sessionKey = args[i+1]
 				i++
 			}
+		case "--no-tui", "-r":
+			useTUI = false
 		}
 	}
 
@@ -455,8 +455,16 @@ func agentCmd() {
 		}
 		fmt.Printf("\n%s %s\n", logo, response)
 	} else {
-		fmt.Printf("%s Interactive mode (Ctrl+C to exit)\n\n", logo)
-		interactiveMode(agentLoop, sessionKey)
+		// Use TUI by default, fallback to readline with --no-tui
+		if useTUI {
+			if err := tui.Run(cfg); err != nil {
+				fmt.Printf("TUI error: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			fmt.Printf("%s Interactive mode (Ctrl+C to exit)\n\n", logo)
+			interactiveMode(agentLoop, sessionKey)
+		}
 	}
 }
 
@@ -543,29 +551,6 @@ func simpleInteractiveMode(agentLoop *agent.AgentLoop, sessionKey string) {
 		}
 
 		fmt.Printf("\n%s %s\n\n", logo, response)
-	}
-}
-
-func tuiCmd() {
-	// Check for --debug flag
-	args := os.Args[2:]
-	for _, arg := range args {
-		if arg == "--debug" || arg == "-d" {
-			logger.SetLevel(logger.DEBUG)
-			break
-		}
-	}
-
-	cfg, err := loadConfig()
-	if err != nil {
-		fmt.Printf("Error loading config: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Run TUI
-	if err := tui.Run(cfg); err != nil {
-		fmt.Printf("TUI error: %v\n", err)
-		os.Exit(1)
 	}
 }
 

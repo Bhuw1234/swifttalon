@@ -1,6 +1,4 @@
-// SwiftTalon TUI - Terminal User Interface
-// Package tui provides types for the terminal interface
-// License: MIT
+// SwiftTalon TUI - Types
 
 package tui
 
@@ -8,36 +6,40 @@ import (
 	"time"
 )
 
-// FocusArea represents the currently focused UI area
+// FocusArea represents which part of the UI is focused
 type FocusArea int
 
 const (
-	FocusSidebar FocusArea = iota
-	FocusChat
-	FocusInput
+	FocusInput FocusArea = iota
+	FocusSessions
+	FocusModels
 )
 
-// Session represents a chat session in the sidebar
+// Session represents a chat session
 type Session struct {
-	Key          string    `json:"key"`
-	Title        string    `json:"title"`
-	LastMsg      string    `json:"last_msg"`
-	Updated      time.Time `json:"updated"`
-	MessageCount int       `json:"message_count"`
+	ID        string
+	Name      string
+	CreatedAt time.Time
+	LastUsed  time.Time
 }
 
-// ChatMessage represents a message in the chat view
-type ChatMessage struct {
-	Role      string    `json:"role"`      // "user", "assistant", "system"
-	Content   string    `json:"content"`
-	Timestamp time.Time `json:"timestamp"`
-	Streaming bool      `json:"streaming"` // Whether this message is still streaming
+// Message represents a chat message
+type Message struct {
+	Role      string // "user" or "assistant"
+	Content   string
+	Timestamp time.Time
 }
 
-// ModelInfo represents information about an available model
-type ModelInfo struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Provider    string `json:"provider"`
-	Description string `json:"description"`
+// ModelState represents model selector state
+type ModelState struct {
+	Models    []string
+	Selected  int
+	Open      bool
+}
+
+// TypingState represents the typing indicator state
+type TypingState struct {
+	Active   bool
+	Frame    int
+	LastTick time.Time
 }

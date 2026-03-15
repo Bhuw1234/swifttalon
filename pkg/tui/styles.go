@@ -1,6 +1,5 @@
-// SwiftTalon TUI - Styles
-// AGGRESSIVE and SUPER EASY TO USE
-// Package tui provides styling for the terminal interface
+// SwiftTalon TUI - RAMBO Style 3D Interface
+// Aggressive, bold, tactical design
 
 package tui
 
@@ -8,392 +7,221 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Color palette - AGGRESSIVE vibrant theme
+// RAMBO Color Palette - Tactical, aggressive, bold
 var (
-	// Primary colors - BOLD and vibrant
-	colorPrimary    = lipgloss.Color("#FF00FF") // MAGENTA - attention grabbing
-	colorSecondary  = lipgloss.Color("#00FFFF") // CYAN - high contrast
-	colorAccent     = lipgloss.Color("#FFFF00") // YELLOW - punchy
-	colorSuccess    = lipgloss.Color("#00FF00") // BRIGHT GREEN
-	colorError      = lipgloss.Color("#FF3333") // BRIGHT RED
-	colorWarning    = lipgloss.Color("#FF9500") // ORANGE
-
-	// Background colors - DARK for contrast
-	colorBgPrimary   = lipgloss.Color("#0A0A0A") // Near black
-	colorBgSecondary = lipgloss.Color("#141414") // Slightly lighter
-	colorBgTertiary  = lipgloss.Color("#1E1E1E") // Panel background
-	colorBgHover     = lipgloss.Color("#2A2A2A") // Hover state
-	colorBgInput     = lipgloss.Color("#0F0F0F") // Input background
-
-	// Text colors - HIGH CONTRAST
-	colorTextPrimary   = lipgloss.Color("#FFFFFF") // PURE WHITE
-	colorTextSecondary = lipgloss.Color("#CCCCCC") // Light gray
-	colorTextMuted     = lipgloss.Color("#888888") // Muted
-
-	// Border colors - BOLD
-	colorBorder       = lipgloss.Color("#333333")
-	colorBorderActive = lipgloss.Color("#FF00FF") // MAGENTA for active
-	colorBorderInput  = lipgloss.Color("#00FFFF") // CYAN for input focus
-
-	// Special colors
-	colorUserBg    = lipgloss.Color("#00AAFF") // Bright blue for user
-	colorAgentBg   = lipgloss.Color("#AA00FF") // Purple for agent
-	colorHighlight = lipgloss.Color("#FFD700") // Gold for highlights
+	// Primary colors - Military inspired
+	RamboRed     = lipgloss.Color("#FF2D2D")    // Aggressive red
+	RamboOrange  = lipgloss.Color("#FF6B2D")    // Warning orange
+	RamboGreen   = lipgloss.Color("#2DFF6B")    // Tactical green
+	RamboYellow  = lipgloss.Color("#FFE42D")    // Alert yellow
+	RamboCyan    = lipgloss.Color("#2DFFF0")    // Tech cyan
+	
+	// Background colors - Dark tactical
+	DarkBase     = lipgloss.Color("#0A0A0F")    // Near black
+	DarkPanel    = lipgloss.Color("#12121A")    // Panel background
+	DarkSurface  = lipgloss.Color("#1A1A25")    // Surface
+	DarkBorder   = lipgloss.Color("#2A2A3A")    // Border
+	
+	// Accent colors
+	NeonPink     = lipgloss.Color("#FF2D7A")    // Neon accent
+	ElectricBlue = lipgloss.Color("#2D7AFF")    // Electric blue
+	PlasmaPurple = lipgloss.Color("#9D2DFF")    // Plasma purple
+	
+	// Text colors
+	TextPrimary   = lipgloss.Color("#FFFFFF")
+	TextSecondary = lipgloss.Color("#AAAAAA")
+	TextMuted     = lipgloss.Color("#666666")
 )
 
-// Base styles
+// 3D Effect Styles
 var (
-	// Base style for the entire app
-	BaseStyle = lipgloss.NewStyle().
-			Background(colorBgPrimary)
+	// 3D Panel with depth effect
+	Panel3D = lipgloss.NewStyle().
+		Background(DarkPanel).
+		Border(lipgloss.RoundedBorder()).
+		BorderBackground(DarkBase).
+		BorderForeground(DarkBorder).
+		Padding(1, 2)
 
-	// Title style - BOLD and BIG
-	TitleStyle = lipgloss.NewStyle().
-			Foreground(colorPrimary).
-			Background(colorBgSecondary).
-			Bold(true).
-			Padding(0, 2).
-			Margin(0, 1)
+	// 3D Box with shadow effect
+	Box3D = lipgloss.NewStyle().
+		Background(DarkSurface).
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("#3A3A4A")).
+		Padding(0, 1)
+
+	// Neon border effect
+	NeonBorder = lipgloss.NewStyle().
+		Border(lipgloss.ThickBorder()).
+		BorderForeground(RamboRed).
+		BorderBackground(DarkBase).
+		Padding(1, 2)
+
+	// Glowing text effect
+	GlowText = lipgloss.NewStyle().
+		Foreground(RamboRed).
+		Bold(true)
+
+	// Title style with 3D effect
+	Title3D = lipgloss.NewStyle().
+		Foreground(RamboOrange).
+		Background(DarkBase).
+		Bold(true).
+		Underline(true).
+		Padding(0, 1)
 
 	// Subtitle style
 	SubtitleStyle = lipgloss.NewStyle().
-			Foreground(colorSecondary).
-			Italic(true).
-			Bold(true)
-)
+		Foreground(TextSecondary).
+		Italic(true)
 
-// Sidebar styles - COMPACT
-var (
-	// Sidebar container
-	SidebarStyle = lipgloss.NewStyle().
-			Background(colorBgSecondary).
-			BorderRight(true).
-			BorderForeground(colorBorder).
-			Padding(1, 1).
-			Width(26)
-
-	// Session item - subdued
-	SessionItemStyle = lipgloss.NewStyle().
-				Padding(0, 1).
-				Foreground(colorTextSecondary)
-
-	// Active session - BRIGHT and OBVIOUS
-	SessionActiveStyle = lipgloss.NewStyle().
-				Padding(0, 1).
-				Foreground(colorPrimary).
-				Background(colorBgHover).
-				Bold(true).
-				BorderLeft(true).
-				BorderForeground(colorPrimary)
-
-	// Session title
-	SessionTitleStyle = lipgloss.NewStyle().
-				Foreground(colorTextPrimary).
-				Width(20).
-				Bold(false)
-
-	// Session meta info
-	SessionMetaStyle = lipgloss.NewStyle().
-				Foreground(colorTextMuted).
-				Faint(true)
-)
-
-// Chat styles - FOCUS ON CONTENT
-var (
-	// Chat container
-	ChatStyle = lipgloss.NewStyle().
-			Background(colorBgPrimary).
-			Padding(1, 2)
-
-	// User message - BRIGHT
-	UserMessageStyle = lipgloss.NewStyle().
-				Foreground(colorTextPrimary).
-				Background(lipgloss.Color("#0A1A2A")).
-				Padding(0, 2).
-				BorderLeft(true).
-				BorderForeground(colorUserBg).
-				MarginLeft(1)
-
-	// Assistant message
-	AssistantMessageStyle = lipgloss.NewStyle().
-				Foreground(colorTextPrimary).
-				Background(lipgloss.Color("#1A0A2A")).
-				Padding(0, 2).
-				BorderLeft(true).
-				BorderForeground(colorAgentBg).
-				MarginLeft(1)
-
-	// System message
-	SystemMessageStyle = lipgloss.NewStyle().
-				Foreground(colorTextMuted).
-				Italic(true).
-				Padding(0, 1).
-				MarginLeft(2)
-
-	// Timestamp style
-	TimestampStyle = lipgloss.NewStyle().
-			Foreground(colorTextMuted).
-			Faint(true)
-
-	// Role badge - BOLD
-	RoleUserStyle = lipgloss.NewStyle().
-			Foreground(colorBgPrimary).
-			Background(colorUserBg).
-			Padding(0, 2).
-			Bold(true).
-			MarginRight(1)
-
-	RoleAssistantStyle = lipgloss.NewStyle().
-				Foreground(colorBgPrimary).
-				Background(colorAgentBg).
-				Padding(0, 2).
-				Bold(true).
-				MarginRight(1)
-
-	RoleSystemStyle = lipgloss.NewStyle().
-				Foreground(colorBgPrimary).
-				Background(colorTextMuted).
-				Padding(0, 1).
-				Italic(true)
-)
-
-// Input styles - PROMINENT!
-var (
-	// Input container - ALWAYS FOCUSED FEEL
-	InputStyle = lipgloss.NewStyle().
-			Background(colorBgInput).
-			BorderTop(true).
-			BorderForeground(colorBorder).
-			Padding(1, 2).
-			MarginTop(1)
-
-	// Input box when focused - OBVIOUS
-	InputFocusedStyle = lipgloss.NewStyle().
-				Background(colorBgInput).
-				BorderTop(true).
-				BorderForeground(colorBorderInput).
-				Padding(1, 2).
-				MarginTop(1)
-
-	// Placeholder style
-	PlaceholderStyle = lipgloss.NewStyle().
-				Foreground(colorTextMuted).
-				Italic(true)
-
-	// Cursor style
-	CursorStyle = lipgloss.NewStyle().
-			Foreground(colorPrimary).
-			Bold(true)
-
-	// Prompt indicator - BRIGHT
-	PromptStyle = lipgloss.NewStyle().
-			Foreground(colorSecondary).
-			Background(colorBgSecondary).
-			Bold(true).
-			Padding(0, 1)
-)
-
-// Status bar styles - ALWAYS VISIBLE SHORTCUTS
-var (
-	// Status bar container
-	StatusBarStyle = lipgloss.NewStyle().
-			Background(colorBgTertiary).
-			Foreground(colorTextPrimary).
-			Padding(0, 1).
-			Height(1)
-
-	// Status indicator (connected, etc.)
-	StatusConnectedStyle = lipgloss.NewStyle().
-				Foreground(colorSuccess).
-				Bold(true)
-
-	StatusDisconnectedStyle = lipgloss.NewStyle().
-				Foreground(colorError).
-				Bold(true)
-
-	StatusLoadingStyle = lipgloss.NewStyle().
-				Foreground(colorAccent).
-				Bold(true).
-				Blink(true)
-
-	// Model badge - OBVIOUS
-	ModelBadgeStyle = lipgloss.NewStyle().
-				Foreground(colorBgPrimary).
-				Background(colorPrimary).
-				Padding(0, 2).
-				Bold(true)
-
-	// Focus indicator
-	FocusIndicatorStyle = lipgloss.NewStyle().
-				Foreground(colorBgPrimary).
-				Background(colorSecondary).
-				Padding(0, 1).
-				Bold(true)
-
-	// Provider badge
-	ProviderBadgeStyle = lipgloss.NewStyle().
-				Foreground(colorBgPrimary).
-				Background(colorSecondary).
-				Padding(0, 1)
-)
-
-// Modal styles
-var (
-	// Modal container - BOLD borders
-	ModalStyle = lipgloss.NewStyle().
-			Background(colorBgTertiary).
-			Border(lipgloss.DoubleBorder()).
-			BorderForeground(colorPrimary).
-			Padding(1, 3).
-			Margin(2, 4)
-
-	// Modal title - BIG
-	ModalTitleStyle = lipgloss.NewStyle().
-				Foreground(colorPrimary).
-				Background(colorBgSecondary).
-				Bold(true).
-				Padding(0, 2).
-				MarginBottom(1)
-
-	// Model selector item
-	ModelItemStyle = lipgloss.NewStyle().
-			Padding(0, 2).
-			Foreground(colorTextPrimary)
-
-	ModelItemSelectedStyle = lipgloss.NewStyle().
-				Padding(0, 2).
-				Foreground(colorBgPrimary).
-				Background(colorPrimary).
-				Bold(true)
-)
-
-// Help styles - KEYBOARD SHORTCUTS ALWAYS VISIBLE
-var (
-	// Help panel
-	HelpStyle = lipgloss.NewStyle().
-			Background(colorBgSecondary).
-			Border(lipgloss.DoubleBorder()).
-			BorderForeground(colorPrimary).
-			Padding(1, 2).
-			Margin(1, 2)
-
-	// Key binding - OBVIOUS
-	KeyStyle = lipgloss.NewStyle().
-			Foreground(colorBgPrimary).
-			Background(colorSecondary).
-			Padding(0, 1).
-			Bold(true)
-
-	// Key description
-	KeyDescStyle = lipgloss.NewStyle().
-			Foreground(colorTextSecondary).
-			Padding(0, 1)
-)
-
-// Error styles - IN YOUR FACE
-var (
-	// Error message - OBVIOUS
-	ErrorStyle = lipgloss.NewStyle().
-			Foreground(colorTextPrimary).
-			Background(colorError).
-			Padding(1, 2).
-			Border(lipgloss.DoubleBorder()).
-			BorderForeground(colorError).
-			Margin(1, 2).
-			Bold(true)
-
-	// Success message
-	SuccessStyle = lipgloss.NewStyle().
-			Foreground(colorBgPrimary).
-			Background(colorSuccess).
-			Padding(1, 2).
-			Bold(true)
-)
-
-// Shortcut bar styles - ALWAYS VISIBLE
-var (
-	// Shortcut bar at bottom
-	ShortcutBarStyle = lipgloss.NewStyle().
-				Background(colorBgSecondary).
-				Foreground(colorTextSecondary).
-				Padding(0, 1).
-				Height(1)
-
-	// Individual shortcut key
-	ShortcutKeyStyle = lipgloss.NewStyle().
-				Foreground(colorBgPrimary).
-				Background(colorTextMuted).
-				Padding(0, 1).
-				Bold(true)
-
-	// Shortcut description
-	ShortcutDescStyle = lipgloss.NewStyle().
-				Foreground(colorTextMuted)
-)
-
-// Welcome styles
-var (
-	WelcomeTitleStyle = lipgloss.NewStyle().
-				Foreground(colorPrimary).
-				Background(colorBgSecondary).
-				Bold(true).
-				Padding(1, 3).
-				MarginBottom(1)
-
-	WelcomeTextStyle = lipgloss.NewStyle().
-				Foreground(colorTextSecondary).
-				Padding(0, 1)
-)
-
-// Typing indicator styles
-var (
-	TypingIndicatorStyle = lipgloss.NewStyle().
-				Foreground(colorAccent).
-				Bold(true).
-				Italic(true)
-)
-
-// Minimum terminal size
-const (
-	MinTerminalWidth  = 80
-	MinTerminalHeight = 24
-)
-
-// Helper functions
-
-// Width returns a style with fixed width
-func Width(w int) lipgloss.Style {
-	return lipgloss.NewStyle().Width(w)
-}
-
-// Height returns a style with fixed height
-func Height(h int) lipgloss.Style {
-	return lipgloss.NewStyle().Height(h)
-}
-
-// Border returns a bordered style
-func Border(color lipgloss.Color) lipgloss.Style {
-	return lipgloss.NewStyle().
+	// Input box with tactical styling
+	InputBox = lipgloss.NewStyle().
+		Background(DarkSurface).
 		Border(lipgloss.NormalBorder()).
-		BorderForeground(color)
+		BorderForeground(RamboGreen).
+		Padding(0, 1).
+		Width(60)
+
+	// Response panel
+	ResponsePanel = lipgloss.NewStyle().
+		Background(DarkPanel).
+		Border(lipgloss.DoubleBorder()).
+		BorderForeground(ElectricBlue).
+		Padding(1, 2).
+		Width(80)
+
+	// Status indicator styles
+	StatusOnline = lipgloss.NewStyle().
+		Foreground(RamboGreen).
+		Bold(true)
+
+	StatusProcessing = lipgloss.NewStyle().
+		Foreground(RamboOrange).
+		Bold(true)
+
+	StatusError = lipgloss.NewStyle().
+		Foreground(RamboRed).
+		Bold(true)
+
+	// Model selector
+	ModelSelector = lipgloss.NewStyle().
+		Background(DarkSurface).
+		Foreground(RamboCyan).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(RamboCyan).
+		Padding(0, 2).
+		Bold(true)
+
+	// Session style
+	SessionStyle = lipgloss.NewStyle().
+		Foreground(TextSecondary).
+		PaddingLeft(2)
+
+	SessionActive = lipgloss.NewStyle().
+		Foreground(RamboYellow).
+		Bold(true).
+		PaddingLeft(2)
+
+	// Help text style
+	HelpStyle = lipgloss.NewStyle().
+		Foreground(TextMuted).
+		Italic(true)
+
+	// Typing indicator animation frames
+	TypingFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+	// 3D Bar for progress/loading
+	Bar3D = lipgloss.NewStyle().
+		Foreground(RamboGreen).
+		Background(DarkSurface)
+
+	// Logo style
+	LogoStyle = lipgloss.NewStyle().
+		Foreground(RamboRed).
+		Bold(true).
+		Padding(0, 1)
+
+	// User message style
+	UserStyle = lipgloss.NewStyle().
+		Foreground(RamboCyan).
+		Bold(true)
+
+	// Assistant message style
+	AssistantStyle = lipgloss.NewStyle().
+		Foreground(RamboOrange).
+		Bold(true)
+)
+
+// CreateGradient creates a visual gradient effect using ANSI colors
+func CreateGradient(text string, startColor, endColor lipgloss.Color) string {
+	// Simple gradient simulation using color codes
+	// Real gradients require more complex terminal support
+	style := lipgloss.NewStyle().
+		Foreground(startColor).
+		Bold(true)
+	return style.Render(text)
 }
 
-// Padding returns a style with padding
-func Padding(top, right, bottom, left int) lipgloss.Style {
-	return lipgloss.NewStyle().Padding(top, right, bottom, left)
+// GetTypingFrame returns the current typing animation frame
+func GetTypingFrame(frame int) string {
+	return TypingFrames[frame%len(TypingFrames)]
 }
 
-// Margin returns a style with margin
-func Margin(top, right, bottom, left int) lipgloss.Style {
-	return lipgloss.NewStyle().Margin(top, right, bottom, left)
+// Render3DBox renders a 3D-style box with shadow effect
+func Render3DBox(content string, width int) string {
+	// Top border with light effect
+	top := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#4A4A5A")).
+		Render("╔" + repeat("═", width-2) + "╗")
+	
+	// Content area
+	middle := Box3D.Width(width).Render(content)
+	
+	// Bottom border with shadow effect
+	bottom := lipgloss.NewStyle().
+		Foreground(DarkBorder).
+		Render("╚" + repeat("═", width-2) + "╝")
+	
+	return top + "\n" + middle + "\n" + bottom
 }
 
-// JoinHorizontal joins strings horizontally with separator
-func JoinHorizontal(sep string, strs ...string) string {
-	return lipgloss.JoinHorizontal(lipgloss.Top, strs...)
+// RenderNeonText creates a neon glow effect
+func RenderNeonText(text string, color lipgloss.Color) string {
+	glow := lipgloss.NewStyle().
+		Foreground(color).
+		Bold(true).
+		Render(text)
+	
+	return glow
 }
 
-// JoinVertical joins strings vertically with separator
-func JoinVertical(sep string, strs ...string) string {
-	return lipgloss.JoinVertical(lipgloss.Left, strs...)
+// RenderTacticalHeader creates a tactical-style header
+func RenderTacticalHeader(title string, width int) string {
+	left := lipgloss.NewStyle().
+		Foreground(RamboRed).
+		Render("◆")
+	
+	right := lipgloss.NewStyle().
+		Foreground(RamboRed).
+		Render("◆")
+	
+	titleStyle := lipgloss.NewStyle().
+		Foreground(RamboOrange).
+		Bold(true).
+		Render(title)
+	
+	line := lipgloss.NewStyle().
+		Foreground(DarkBorder).
+		Render(repeat("─", (width-len(title)-6)/2))
+	
+	return line + " " + left + " " + titleStyle + " " + right + " " + line
+}
+
+func repeat(s string, n int) string {
+	result := ""
+	for i := 0; i < n; i++ {
+		result += s
+	}
+	return result
 }

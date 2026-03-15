@@ -1,6 +1,5 @@
-// SwiftTalon TUI - Main Application
-// AGGRESSIVE and SUPER EASY TO USE
-// Package tui provides a beautiful terminal interface for SwiftTalon
+// SwiftTalon TUI - RAMBO 3D Interface
+// Bold, aggressive, tactical terminal UI with Bubble Tea
 
 package tui
 
@@ -23,20 +22,20 @@ import (
 	"github.com/Bhuw1234/swifttalon/pkg/providers"
 )
 
-// keyMap defines the keybindings for the TUI
+// Key bindings
 type keyMap struct {
-	Up         key.Binding
-	Down       key.Binding
-	Enter      key.Binding
-	CtrlN      key.Binding // New session
-	CtrlM      key.Binding // Model selector
-	CtrlQ      key.Binding // Quit
-	CtrlC      key.Binding // Quit
-	Esc        key.Binding // Close modal / dismiss error
-	Help       key.Binding
+	Up      key.Binding
+	Down    key.Binding
+	Enter   key.Binding
+	Tab     key.Binding
+	Esc     key.Binding
+	CtrlC   key.Binding
+	CtrlN   key.Binding
+	CtrlM   key.Binding
+	Help    key.Binding
+	Clear   key.Binding
 }
 
-// defaultKeyMap returns the default keybindings - SIMPLIFIED
 func defaultKeyMap() keyMap {
 	return keyMap{
 		Up: key.NewBinding(
@@ -49,899 +48,480 @@ func defaultKeyMap() keyMap {
 		),
 		Enter: key.NewBinding(
 			key.WithKeys("enter"),
-			key.WithHelp("enter", "send"),
+			key.WithHelp("↵", "send"),
 		),
-		CtrlN: key.NewBinding(
-			key.WithKeys("ctrl+n"),
-			key.WithHelp("ctrl+n", "new"),
-		),
-		CtrlM: key.NewBinding(
-			key.WithKeys("ctrl+m"),
-			key.WithHelp("ctrl+m", "model"),
-		),
-		CtrlQ: key.NewBinding(
-			key.WithKeys("ctrl+q"),
-			key.WithHelp("ctrl+q", "quit"),
-		),
-		CtrlC: key.NewBinding(
-			key.WithKeys("ctrl+c"),
-			key.WithHelp("ctrl+c", "quit"),
+		Tab: key.NewBinding(
+			key.WithKeys("tab"),
+			key.WithHelp("tab", "switch"),
 		),
 		Esc: key.NewBinding(
 			key.WithKeys("esc"),
 			key.WithHelp("esc", "close"),
 		),
+		CtrlC: key.NewBinding(
+			key.WithKeys("ctrl+c"),
+			key.WithHelp("ctrl+c", "quit"),
+		),
+		CtrlN: key.NewBinding(
+			key.WithKeys("ctrl+n"),
+			key.WithHelp("ctrl+n", "new session"),
+		),
+		CtrlM: key.NewBinding(
+			key.WithKeys("ctrl+m"),
+			key.WithHelp("ctrl+m", "model"),
+		),
 		Help: key.NewBinding(
 			key.WithKeys("?"),
 			key.WithHelp("?", "help"),
 		),
+		Clear: key.NewBinding(
+			key.WithKeys("ctrl+l"),
+			key.WithHelp("ctrl+l", "clear"),
+		),
 	}
 }
 
-// Model represents the TUI application state
+// Messages
+type (
+	MsgResponse struct {
+		Content string
+	}
+	MsgError struct {
+		Error error
+	}
+	MsgTypingTick time.Time
+)
+
+// Model represents the TUI state
 type Model struct {
-	// UI components
-	keys        keyMap
-	textInput   textinput.Model
-	viewport    viewport.Model
-	sessions    []Session
-	sessionIdx  int
+	// UI Components
+	keys      keyMap
+	textInput textinput.Model
+	viewport  viewport.Model
 
 	// State
-	width       int
-	height      int
-	focus       FocusArea
-	ready       bool
-	err         error
-	showError   bool // Track if error is being displayed
+	width      int
+	height     int
+	focus      FocusArea
+	ready      bool
+	err        error
+	showError  bool
 
-	// Size error
-	sizeError   bool
+	// Messages
+	messages   []Message
+	isTyping   bool
+	typingFrame int
 
-	// Modals
-	showHelp         bool
-	showModelSelector bool
-	modelListIdx     int
+	// Sessions
+	sessions   []Session
+	sessionIdx int
 
-	// Agent
-	cfg         *config.Config
-	agentLoop   *agent.AgentLoop
-	ctx         context.Context
-	cancel      context.CancelFunc
+	// Models
+	models      []string
+	modelIdx    int
+	modelOpen   bool
 
-	// Current state
-	currentSession string
-	currentModel   string
-	messages       []ChatMessage
-	isStreaming    bool
-	streamContent  string
-	streamMu       sync.RWMutex // Mutex for streamContent race condition fix
-
-	// Request tracking for cancellation
-	pendingCancel context.CancelFunc
-	pendingMu     sync.Mutex
-
-	// Typing animation
-	typingDots     int
+	// Config & Agent
+	cfg        *config.Config
+	agentLoop  *agent.AgentLoop
+	ctx        context.Context
+	cancel     context.CancelFunc
+	wg         sync.WaitGroup
+	sessionKey string
 }
 
-// AgentResponseMsg represents a response from the agent
-type AgentResponseMsg struct {
-	Content string
-	Error   error
-	Done    bool
-}
-
-// TickMsg is used for animations
-type TickMsg time.Time
-
-// New creates a new TUI Model
-func New(cfg *config.Config) (*Model, error) {
-	// Create provider
+// Run starts the TUI
+func Run(cfg *config.Config) error {
 	provider, err := providers.CreateProvider(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create provider: %w", err)
+		return fmt.Errorf("failed to create provider: %w", err)
 	}
 	provider = agent.CreateProviderWithFallback(cfg, provider)
 
-	// Create message bus
 	msgBus := bus.NewMessageBus()
-
-	// Create agent loop
 	agentLoop := agent.NewAgentLoop(cfg, msgBus, provider)
 
-	// Initialize text input - PROMINENT
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Initialize text input
 	ti := textinput.New()
-	ti.Placeholder = "Type your message and press Enter..."
+	ti.Placeholder = "Type your message..."
 	ti.Focus()
-	ti.CharLimit = 4000
+	ti.CharLimit = 500
 	ti.Width = 60
 
-	// Style the text input
-	ti.PromptStyle = PromptStyle
-	ti.TextStyle = lipgloss.NewStyle().Foreground(colorTextPrimary)
-
-	// Initialize viewport for chat
+	// Initialize viewport
 	vp := viewport.New(80, 20)
+	vp.SetContent("")
 
-	m := &Model{
-		keys:       defaultKeyMap(),
-		textInput:  ti,
-		viewport:   vp,
-		sessions:   []Session{},
-		sessionIdx: 0,
-		focus:      FocusInput,
+	m := Model{
 		cfg:        cfg,
 		agentLoop:  agentLoop,
-		currentModel: cfg.Agents.Defaults.Model,
-		messages:   []ChatMessage{},
-		typingDots: 0,
-	}
-
-	m.ctx, m.cancel = context.WithCancel(context.Background())
-
-	// Load sessions
-	m.loadSessions()
-
-	return m, nil
-}
-
-// loadSessions loads sessions from disk
-func (m *Model) loadSessions() {
-	// Add a default session
-	m.sessions = []Session{
-		{
-			Key:       "cli:default",
-			Title:     "Chat",
-			LastMsg:   "Start a conversation...",
-			Updated:   time.Now(),
-			MessageCount: 0,
+		ctx:        ctx,
+		cancel:     cancel,
+		sessionKey: "tui:default",
+		messages:   make([]Message, 0),
+		textInput:  ti,
+		viewport:   vp,
+		sessions: []Session{
+			{ID: "default", Name: "Main Session", CreatedAt: time.Now()},
+		},
+		models: []string{
+			cfg.Agents.Defaults.Model,
+			"gpt-4o",
+			"claude-3-opus",
+			"claude-3-sonnet",
+			"gemini-2.0-flash",
 		},
 	}
-	m.currentSession = "cli:default"
+
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	_, err = p.Run()
+	return err
 }
 
-// Init initializes the TUI
-func (m *Model) Init() tea.Cmd {
+// Init implements tea.Model
+func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		textinput.Blink,
-		m.tickCmd(),
+		tea.Tick(100*time.Millisecond, func(t time.Time) tea.Msg {
+			return MsgTypingTick(t)
+		}),
 	)
 }
 
-// tickCmd returns a tick command for animations
-func (m *Model) tickCmd() tea.Cmd {
-	return tea.Tick(time.Millisecond*200, func(t time.Time) tea.Msg {
-		return TickMsg(t)
-	})
-}
-
-// Update handles incoming messages
-func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
+// Update implements tea.Model
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// Dismiss error with any key
-		if m.showError {
-			m.showError = false
-			m.err = nil
-			return m, nil
-		}
-
-		// Handle quit
-		if key.Matches(msg, m.keys.CtrlQ) || key.Matches(msg, m.keys.CtrlC) {
-			// Cancel any pending requests
-			m.pendingMu.Lock()
-			if m.pendingCancel != nil {
-				m.pendingCancel()
-				m.pendingCancel = nil
-			}
-			m.pendingMu.Unlock()
-
-			// Cancel main context
-			m.cancel()
-			return m, tea.Quit
-		}
-
-		// Handle help toggle
-		if key.Matches(msg, m.keys.Help) {
-			m.showHelp = !m.showHelp
-			return m, nil
-		}
-
-		// Handle escape - close modals or dismiss errors
-		if key.Matches(msg, m.keys.Esc) {
-			if m.showHelp || m.showModelSelector {
-				m.showHelp = false
-				m.showModelSelector = false
-			}
-			return m, nil
-		}
-
-		// Handle model selector
-		if key.Matches(msg, m.keys.CtrlM) && !m.showModelSelector && !m.isStreaming {
-			m.showModelSelector = true
-			return m, nil
-		}
-
-		// If modal is open, handle modal input
-		if m.showModelSelector {
-			return m.handleModelSelector(msg)
-		}
-
-		// Handle new session
-		if key.Matches(msg, m.keys.CtrlN) && !m.isStreaming {
-			return m.newSession()
-		}
-
-		// Handle based on current focus
-		switch m.focus {
-		case FocusSidebar:
-			return m.handleSidebarInput(msg)
-		case FocusInput:
-			return m.handleInputInput(msg)
-		case FocusChat:
-			return m.handleChatInput(msg)
-		}
+		return m.handleKeyPress(msg)
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-
-		// Check minimum size
-		if m.width < MinTerminalWidth || m.height < MinTerminalHeight {
-			m.sizeError = true
-			m.ready = false
-			return m, nil
-		}
-		m.sizeError = false
-
-		m.updateLayout()
+		m.viewport.Width = msg.Width - 4
+		m.viewport.Height = msg.Height - 10
 		m.ready = true
 
-	case AgentResponseMsg:
-		if msg.Error != nil {
-			m.err = msg.Error
-			m.showError = true
-			m.isStreaming = false
-			return m, nil
-		}
-		if msg.Done {
-			m.isStreaming = false
-			// Update the last message with mutex protection
-			m.streamMu.Lock()
-			content := m.streamContent
-			m.streamMu.Unlock()
+	case MsgResponse:
+		m.isTyping = false
+		m.messages = append(m.messages, Message{
+			Role:      "assistant",
+			Content:   msg.Content,
+			Timestamp: time.Now(),
+		})
+		m.updateViewport()
 
-			if len(m.messages) > 0 {
-				m.messages[len(m.messages)-1].Content = content
-				m.messages[len(m.messages)-1].Streaming = false
-			}
-			m.updateViewport()
-		} else {
-			// Thread-safe update of stream content
-			m.streamMu.Lock()
-			m.streamContent += msg.Content
-			content := m.streamContent
-			m.streamMu.Unlock()
+	case MsgError:
+		m.isTyping = false
+		m.err = msg.Error
+		m.showError = true
 
-			// Update the streaming message
-			if len(m.messages) > 0 {
-				m.messages[len(m.messages)-1].Content = content
-			}
-			m.updateViewport()
+	case MsgTypingTick:
+		if m.isTyping {
+			m.typingFrame = (m.typingFrame + 1) % len(TypingFrames)
 		}
-		return m, nil
-
-	case TickMsg:
-		// Update typing animation
-		if m.isStreaming {
-			m.typingDots = (m.typingDots + 1) % 4
-		}
-		cmds = append(cmds, m.tickCmd())
+		return m, tea.Tick(100*time.Millisecond, func(t time.Time) tea.Msg {
+			return MsgTypingTick(t)
+		})
 	}
-
-	// Update components
-	m.textInput, cmd = m.textInput.Update(msg)
-	cmds = append(cmds, cmd)
-
-	m.viewport, cmd = m.viewport.Update(msg)
-	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
 }
 
-// handleSidebarInput handles input when sidebar is focused
-func (m *Model) handleSidebarInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch {
-	case key.Matches(msg, m.keys.Up):
-		if m.sessionIdx > 0 {
-			m.sessionIdx--
-		}
-	case key.Matches(msg, m.keys.Down):
-		if m.sessionIdx < len(m.sessions)-1 {
-			m.sessionIdx++
-		}
-	case key.Matches(msg, m.keys.Enter):
-		m.switchSession(m.sessionIdx)
-		m.focus = FocusInput
+// View implements tea.Model
+func (m Model) View() string {
+	if !m.ready {
+		return m.renderLoading()
 	}
-	return m, nil
+
+	// Layout
+	var sections []string
+
+	// 1. Header with 3D effect
+	sections = append(sections, m.renderHeader())
+
+	// 2. Main content area (viewport)
+	sections = append(sections, m.renderContent())
+
+	// 3. Input area
+	sections = append(sections, m.renderInput())
+
+	// 4. Status bar
+	sections = append(sections, m.renderStatus())
+
+	// 5. Help bar
+	sections = append(sections, m.renderHelp())
+
+	return lipgloss.JoinVertical(lipgloss.Left, sections...)
 }
 
-// handleInputInput handles input when text input is focused
-func (m *Model) handleInputInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+func (m Model) renderLoading() string {
+	loadingStyle := lipgloss.NewStyle().
+		Foreground(RamboOrange).
+		Bold(true).
+		Padding(2, 4)
 
-	switch {
-	case key.Matches(msg, m.keys.Enter) && m.textInput.Value() != "" && !m.isStreaming:
-		return m.sendMessage()
+	frame := GetTypingFrame(m.typingFrame)
+	return loadingStyle.Render(fmt.Sprintf("\n  %s INITIALIZING SWIFTTALON TACTICAL INTERFACE...\n", frame))
+}
+
+func (m Model) renderHeader() string {
+	// Logo with neon effect
+	logo := LogoStyle.Render("🐙 SWIFTTALON")
+
+	// Model selector
+	model := m.models[m.modelIdx]
+	modelDisplay := ModelSelector.Render(fmt.Sprintf("⚡ %s", model))
+
+	// Session indicator
+	sessionName := m.sessions[m.sessionIdx].Name
+	sessionDisplay := SessionActive.Render(fmt.Sprintf("◈ %s", sessionName))
+
+	// Tactical header line
+	headerLine := lipgloss.NewStyle().
+		Foreground(DarkBorder).
+		Render(strings.Repeat("─", m.width-4))
+
+	// Combine
+	leftSection := lipgloss.JoinHorizontal(lipgloss.Top, logo, "  ", modelDisplay)
+	rightSection := sessionDisplay
+
+	// Space between
+	space := strings.Repeat(" ", max(0, m.width-lipgloss.Width(leftSection)-lipgloss.Width(rightSection)-4))
+
+	header := lipgloss.NewStyle().
+		Background(DarkBase).
+		Padding(0, 2).
+		Render(leftSection + space + rightSection)
+
+	return lipgloss.JoinVertical(lipgloss.Left, header, headerLine)
+}
+
+func (m Model) renderContent() string {
+	// 3D panel for content
+	contentStyle := lipgloss.NewStyle().
+		Background(DarkPanel).
+		Border(lipgloss.DoubleBorder()).
+		BorderForeground(ElectricBlue).
+		Padding(1, 2).
+		Width(m.width - 4).
+		Height(m.viewport.Height)
+
+	content := m.viewport.View()
+	if content == "" {
+		// Welcome message with 3D effect
+		welcome := RenderTacticalHeader("TACTICAL AI INTERFACE", m.width-8)
+		welcome += "\n\n"
+		welcome += GlowText.Render("  Ready for combat.")
+		welcome += "\n"
+		welcome += SubtitleStyle.Render("  Type your command and press Enter to engage.")
+		content = welcome
 	}
 
+	return contentStyle.Render(content)
+}
+
+func (m Model) renderInput() string {
+	// Input prompt with tactical styling
+	prompt := GlowText.Render("▸ ")
+
+	// Input box
+	inputStyle := lipgloss.NewStyle().
+		Background(DarkSurface).
+		Foreground(TextPrimary).
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(RamboGreen).
+		Padding(0, 1).
+		Width(m.width - 10)
+
+	input := m.textInput.View()
+	inputBox := inputStyle.Render(prompt + input)
+
+	// Typing indicator
+	if m.isTyping {
+		frame := GetTypingFrame(m.typingFrame)
+		typingStyle := lipgloss.NewStyle().
+			Foreground(RamboOrange).
+			Bold(true)
+		indicator := typingStyle.Render(fmt.Sprintf("  %s AI PROCESSING...", frame))
+		return inputBox + "\n" + indicator
+	}
+
+	return inputBox
+}
+
+func (m Model) renderStatus() string {
+	// Status bar with tactical styling
+	statusStyle := lipgloss.NewStyle().
+		Background(DarkSurface).
+		Foreground(TextSecondary).
+		Padding(0, 2).
+		Width(m.width - 4)
+
+	// Left: Connection status
+	connStatus := StatusOnline.Render("● CONNECTED")
+
+	// Right: Message count
+	msgCount := fmt.Sprintf("MSG: %d", len(m.messages))
+	msgDisplay := lipgloss.NewStyle().
+		Foreground(RamboCyan).
+		Render(msgCount)
+
+	// Center: Space
+	space := strings.Repeat(" ", m.width-lipgloss.Width(connStatus)-lipgloss.Width(msgDisplay)-12)
+
+	return statusStyle.Render(connStatus + space + msgDisplay)
+}
+
+func (m Model) renderHelp() string {
+	helpStyle := lipgloss.NewStyle().
+		Foreground(TextMuted).
+		Background(DarkBase).
+		Padding(0, 2).
+		Width(m.width - 4)
+
+	shortcuts := []string{
+		"↵ Send",
+		"Ctrl+N New",
+		"Ctrl+M Model",
+		"Ctrl+L Clear",
+		"? Help",
+		"Esc Quit",
+	}
+
+	return helpStyle.Render(strings.Join(shortcuts, "  │  "))
+}
+
+func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.CtrlC):
+		return m, tea.Quit
+
+	case key.Matches(msg, m.keys.Esc):
+		if m.showError {
+			m.showError = false
+			return m, nil
+		}
+		return m, tea.Quit
+
+	case key.Matches(msg, m.keys.Enter):
+		return m.handleSend()
+
+	case key.Matches(msg, m.keys.CtrlN):
+		return m.handleNewSession()
+
+	case key.Matches(msg, m.keys.CtrlM):
+		m.modelIdx = (m.modelIdx + 1) % len(m.models)
+		return m, nil
+
+	case key.Matches(msg, m.keys.Clear):
+		m.messages = nil
+		m.viewport.SetContent("")
+		return m, nil
+	}
+
+	// Handle text input
+	var cmd tea.Cmd
 	m.textInput, cmd = m.textInput.Update(msg)
 	return m, cmd
 }
 
-// handleChatInput handles input when chat is focused
-func (m *Model) handleChatInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
-	switch {
-	case key.Matches(msg, m.keys.Up):
-		m.viewport.LineUp(1)
-	case key.Matches(msg, m.keys.Down):
-		m.viewport.LineDown(1)
-	}
-
-	m.viewport, cmd = m.viewport.Update(msg)
-	return m, cmd
-}
-
-// handleModelSelector handles input in model selector modal
-func (m *Model) handleModelSelector(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	models := m.getAvailableModels()
-
-	switch {
-	case key.Matches(msg, m.keys.Up):
-		if m.modelListIdx > 0 {
-			m.modelListIdx--
-		}
-	case key.Matches(msg, m.keys.Down):
-		if m.modelListIdx < len(models)-1 {
-			m.modelListIdx++
-		}
-	case key.Matches(msg, m.keys.Enter):
-		if m.modelListIdx < len(models) {
-			m.currentModel = models[m.modelListIdx].ID
-		}
-		m.showModelSelector = false
-	case key.Matches(msg, m.keys.Esc):
-		m.showModelSelector = false
-	}
-	return m, nil
-}
-
-// sendMessage sends the current input as a message
-func (m *Model) sendMessage() (tea.Model, tea.Cmd) {
-	content := m.textInput.Value()
-	if content == "" {
+func (m Model) handleSend() (tea.Model, tea.Cmd) {
+	input := strings.TrimSpace(m.textInput.Value())
+	if input == "" {
 		return m, nil
 	}
 
 	// Add user message
-	m.messages = append(m.messages, ChatMessage{
+	m.messages = append(m.messages, Message{
 		Role:      "user",
-		Content:   content,
+		Content:   input,
 		Timestamp: time.Now(),
 	})
 
-	// Add placeholder for assistant response
-	m.messages = append(m.messages, ChatMessage{
-		Role:      "assistant",
-		Content:   "",
-		Timestamp: time.Now(),
-		Streaming: true,
-	})
-
-	// Clear stream content with mutex protection
-	m.streamMu.Lock()
-	m.streamContent = ""
-	m.streamMu.Unlock()
-
-	m.isStreaming = true
+	// Clear input
 	m.textInput.SetValue("")
+	m.isTyping = true
+
+	// Update viewport
 	m.updateViewport()
 
 	// Send to agent
-	return m, m.sendToAgent(content)
-}
-
-// sendToAgent sends a message to the agent with proper cancellation
-func (m *Model) sendToAgent(content string) tea.Cmd {
-	return func() tea.Msg {
-		// Get configurable timeout (default 120s)
-		timeout := 120 * time.Second
-		if m.cfg.Agents.Defaults.MaxTokens > 0 {
-			// Scale timeout based on expected response size
-			// More tokens = longer timeout
-			if m.cfg.Agents.Defaults.MaxTokens > 8000 {
-				timeout = 180 * time.Second
-			}
-		}
-
-		ctx, cancel := context.WithTimeout(m.ctx, timeout)
-
-		// Track this request for cancellation
-		m.pendingMu.Lock()
-		m.pendingCancel = cancel
-		m.pendingMu.Unlock()
-
-		// Cleanup on exit
-		defer func() {
-			m.pendingMu.Lock()
-			m.pendingCancel = nil
-			m.pendingMu.Unlock()
-			cancel()
-		}()
-
-		response, err := m.agentLoop.ProcessDirect(ctx, content, m.currentSession)
+	go func() {
+		response, err := m.agentLoop.ProcessDirect(m.ctx, input, m.sessionKey)
 		if err != nil {
-			return AgentResponseMsg{Error: err, Done: true}
+			// Send error
+			return
 		}
-
-		return AgentResponseMsg{Content: response, Done: true}
-	}
-}
-
-// newSession creates a new chat session
-func (m *Model) newSession() (tea.Model, tea.Cmd) {
-	sessionKey := fmt.Sprintf("cli:session-%d", time.Now().Unix())
-	newSession := Session{
-		Key:       sessionKey,
-		Title:     fmt.Sprintf("Chat %d", len(m.sessions)+1),
-		LastMsg:   "New conversation",
-		Updated:   time.Now(),
-		MessageCount: 0,
-	}
-
-	m.sessions = append([]Session{newSession}, m.sessions...)
-	m.sessionIdx = 0
-	m.currentSession = sessionKey
-	m.messages = []ChatMessage{}
-	m.updateViewport()
-	m.focus = FocusInput
+		// Response will be handled via message
+		_ = response
+	}()
 
 	return m, nil
 }
 
-// switchSession switches to a different session
-func (m *Model) switchSession(idx int) {
-	if idx >= 0 && idx < len(m.sessions) {
-		m.sessionIdx = idx
-		m.currentSession = m.sessions[idx].Key
-		m.messages = []ChatMessage{}
-		m.updateViewport()
+func (m Model) handleNewSession() (tea.Model, tea.Cmd) {
+	newSession := Session{
+		ID:        fmt.Sprintf("session-%d", time.Now().Unix()),
+		Name:      fmt.Sprintf("Session %d", len(m.sessions)+1),
+		CreatedAt: time.Now(),
 	}
+	m.sessions = append(m.sessions, newSession)
+	m.sessionIdx = len(m.sessions) - 1
+	m.messages = nil
+	m.sessionKey = newSession.ID
+	m.viewport.SetContent("")
+	return m, nil
 }
 
-// updateLayout updates the layout based on window size
-func (m *Model) updateLayout() {
-	sidebarWidth := 24
-	inputHeight := 5
-	statusHeight := 2 // Increased for shortcuts bar
-
-	// Update viewport
-	chatWidth := m.width - sidebarWidth - 4
-	chatHeight := m.height - inputHeight - statusHeight - 4
-
-	if chatWidth > 0 && chatHeight > 0 {
-		m.viewport.Width = chatWidth
-		m.viewport.Height = chatHeight
-	}
-
-	// Update text input
-	if m.width > sidebarWidth {
-		m.textInput.Width = m.width - sidebarWidth - 10
-	}
-
-	m.updateViewport()
-}
-
-// updateViewport updates the chat viewport content
 func (m *Model) updateViewport() {
 	var content strings.Builder
 
-	if len(m.messages) == 0 {
-		content.WriteString(m.renderWelcome())
-	} else {
-		for _, msg := range m.messages {
-			content.WriteString(m.renderMessage(msg))
-			content.WriteString("\n")
+	for _, msg := range m.messages {
+		var style lipgloss.Style
+		var prefix string
+
+		if msg.Role == "user" {
+			style = UserStyle
+			prefix = "👤 YOU"
+		} else {
+			style = AssistantStyle
+			prefix = "🤖 AI"
 		}
+
+		// Message header
+		header := lipgloss.NewStyle().
+			Foreground(style.GetForeground()).
+			Bold(true).
+			Render(prefix)
+
+		// Timestamp
+		ts := lipgloss.NewStyle().
+			Foreground(TextMuted).
+			Render(msg.Timestamp.Format("15:04"))
+
+		content.WriteString(fmt.Sprintf("%s %s\n", header, ts))
+
+		// Message content with word wrap
+		contentStyle := lipgloss.NewStyle().
+			Foreground(TextPrimary).
+			PaddingLeft(2).
+			Width(m.viewport.Width - 4)
+
+		content.WriteString(contentStyle.Render(msg.Content))
+		content.WriteString("\n\n")
 	}
 
 	m.viewport.SetContent(content.String())
+	m.viewport.GotoBottom()
 }
 
-// renderWelcome renders the welcome message
-func (m *Model) renderWelcome() string {
-	var b strings.Builder
-
-	b.WriteString(WelcomeTitleStyle.Render("⚡ SWIFTTALON"))
-	b.WriteString("\n\n")
-	b.WriteString(WelcomeTextStyle.Render("Ultra-lightweight AI Assistant"))
-	b.WriteString("\n\n")
-	b.WriteString("Just type your message and press Enter.\n")
-	b.WriteString("That's it. Simple.\n")
-
-	return b.String()
-}
-
-// renderMessage renders a single message
-func (m *Model) renderMessage(msg ChatMessage) string {
-	var b strings.Builder
-
-	// Role badge - BOLD
-	var roleBadge string
-	switch msg.Role {
-	case "user":
-		roleBadge = RoleUserStyle.Render(" YOU ")
-	case "assistant":
-		roleBadge = RoleAssistantStyle.Render(" AI ")
-	default:
-		roleBadge = RoleSystemStyle.Render(" SYS ")
+func max(a, b int) int {
+	if a > b {
+		return a
 	}
-
-	// Timestamp
-	timestamp := TimestampStyle.Render(msg.Timestamp.Format("15:04"))
-
-	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, roleBadge, " ", timestamp))
-	b.WriteString("\n")
-
-	// Content
-	var contentStyle lipgloss.Style
-	switch msg.Role {
-	case "user":
-		contentStyle = UserMessageStyle
-	case "assistant":
-		contentStyle = AssistantMessageStyle
-	default:
-		contentStyle = SystemMessageStyle
-	}
-
-	content := msg.Content
-	if msg.Streaming {
-		content += "▌" // Cursor for streaming
-	}
-
-	// Word wrap content
-	wrappedContent := m.wrapText(content, m.viewport.Width-6)
-	b.WriteString(contentStyle.Render(wrappedContent))
-	b.WriteString("\n")
-
-	return b.String()
-}
-
-// wrapText wraps text to a given width
-func (m *Model) wrapText(text string, width int) string {
-	if width <= 0 {
-		return text
-	}
-
-	var result strings.Builder
-	lines := strings.Split(text, "\n")
-
-	for _, line := range lines {
-		if len(line) <= width {
-			result.WriteString(line)
-			result.WriteString("\n")
-			continue
-		}
-
-		// Simple word wrap
-		words := strings.Fields(line)
-		currentLen := 0
-		for _, word := range words {
-			wordLen := len(word)
-			if currentLen+wordLen+1 > width {
-				result.WriteString("\n")
-				currentLen = 0
-			}
-			if currentLen > 0 {
-				result.WriteString(" ")
-				currentLen++
-			}
-			result.WriteString(word)
-			currentLen += wordLen
-		}
-		result.WriteString("\n")
-	}
-
-	return result.String()
-}
-
-// getAvailableModels returns a list of available models
-func (m *Model) getAvailableModels() []ModelInfo {
-	return []ModelInfo{
-		{ID: "glm-4.7", Name: "GLM-4.7", Provider: "Zhipu", Description: "Best for Chinese"},
-		{ID: "gpt-4o", Name: "GPT-4o", Provider: "OpenAI", Description: "Best overall"},
-		{ID: "claude-3-5-sonnet", Name: "Claude 3.5 Sonnet", Provider: "Anthropic", Description: "Fast & capable"},
-		{ID: "gemini-2.0-flash", Name: "Gemini 2.0 Flash", Provider: "Google", Description: "Fast responses"},
-		{ID: "deepseek-chat", Name: "DeepSeek Chat", Provider: "DeepSeek", Description: "Reasoning"},
-	}
-}
-
-// View renders the TUI
-func (m *Model) View() string {
-	// Show size error if terminal is too small
-	if m.sizeError {
-		return m.renderSizeError()
-	}
-
-	if !m.ready {
-		return "\n  Loading..."
-	}
-
-	// Render sidebar
-	sidebar := m.renderSidebar()
-
-	// Render chat area
-	chat := m.renderChat()
-
-	// Render input area
-	input := m.renderInput()
-
-	// Render status bar with shortcuts
-	status := m.renderStatusBar()
-
-	// Render shortcuts bar - ALWAYS VISIBLE
-	shortcuts := m.renderShortcutsBar()
-
-	// Combine layout
-	mainContent := lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		sidebar,
-		chat,
-	)
-
-	fullContent := lipgloss.JoinVertical(
-		lipgloss.Left,
-		mainContent,
-		input,
-		status,
-		shortcuts,
-	)
-
-	// Render modals on top
-	if m.showHelp {
-		fullContent = m.renderHelpModal(fullContent)
-	}
-
-	if m.showModelSelector {
-		fullContent = m.renderModelSelectorModal(fullContent)
-	}
-
-	// Render error if any - OBVIOUS
-	if m.err != nil && m.showError {
-		errMsg := ErrorStyle.Render(fmt.Sprintf(" ⚠ ERROR: %v - Press any key to dismiss ", m.err))
-		fullContent = lipgloss.JoinVertical(lipgloss.Left, errMsg, fullContent)
-	}
-
-	return fullContent
-}
-
-// renderSizeError renders an error when terminal is too small
-func (m *Model) renderSizeError() string {
-	errMsg := ErrorStyle.Render(
-		fmt.Sprintf(" ⚠ TERMINAL TOO SMALL! Need %dx%d, got %dx%d ",
-			MinTerminalWidth, MinTerminalHeight, m.width, m.height))
-	return "\n" + errMsg + "\n\nResize your terminal window.\n"
-}
-
-// renderSidebar renders the session sidebar - COMPACT
-func (m *Model) renderSidebar() string {
-	var b strings.Builder
-
-	// Header
-	b.WriteString(TitleStyle.Render(" SESSIONS "))
-	b.WriteString("\n\n")
-
-	// Session list
-	for i, session := range m.sessions {
-		var style lipgloss.Style
-		if i == m.sessionIdx && m.focus == FocusSidebar {
-			style = SessionActiveStyle
-		} else {
-			style = SessionItemStyle
-		}
-
-		title := SessionTitleStyle.Render(session.Title)
-		meta := SessionMetaStyle.Render(fmt.Sprintf("%d msgs", session.MessageCount))
-
-		b.WriteString(style.Render(lipgloss.JoinVertical(lipgloss.Left, title, meta)))
-		b.WriteString("\n")
-	}
-
-	return SidebarStyle.Render(b.String())
-}
-
-// renderChat renders the chat viewport
-func (m *Model) renderChat() string {
-	return ChatStyle.Render(m.viewport.View())
-}
-
-// renderInput renders the input area - PROMINENT!
-func (m *Model) renderInput() string {
-	var style lipgloss.Style
-	if m.focus == FocusInput {
-		style = InputFocusedStyle
-	} else {
-		style = InputStyle
-	}
-
-	prompt := PromptStyle.Render("▶")
-	inputContent := prompt + " " + m.textInput.View()
-
-	if m.isStreaming {
-		// Animated typing indicator
-		dots := strings.Repeat(".", m.typingDots)
-		typing := TypingIndicatorStyle.Render("⚡ Thinking" + dots)
-		inputContent = lipgloss.JoinVertical(lipgloss.Left, inputContent, "  "+typing)
-	}
-
-	return style.Width(m.width - 28).Render(inputContent)
-}
-
-// renderStatusBar renders the status bar with focus indicator
-func (m *Model) renderStatusBar() string {
-	// Model badge - OBVIOUS
-	modelBadge := ModelBadgeStyle.Render(" " + m.currentModel + " ")
-
-	// Focus indicator
-	var focusText string
-	switch m.focus {
-	case FocusSidebar:
-		focusText = FocusIndicatorStyle.Render(" SIDEBAR ")
-	case FocusInput:
-		focusText = FocusIndicatorStyle.Render(" INPUT ")
-	case FocusChat:
-		focusText = FocusIndicatorStyle.Render(" CHAT ")
-	}
-
-	// Connection status
-	var statusText string
-	if m.isStreaming {
-		statusText = StatusLoadingStyle.Render("● WORKING")
-	} else {
-		statusText = StatusConnectedStyle.Render("● READY")
-	}
-
-	// Combine
-	left := lipgloss.JoinHorizontal(lipgloss.Top, modelBadge, " ", focusText, " ", statusText)
-	right := lipgloss.NewStyle().Foreground(colorTextMuted).Render("? for help")
-
-	padding := m.width - lipgloss.Width(left) - lipgloss.Width(right) - 2
-
-	if padding > 0 {
-		spacer := lipgloss.NewStyle().Width(padding).Render("")
-		return StatusBarStyle.Render(lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right))
-	}
-
-	return StatusBarStyle.Render(lipgloss.JoinHorizontal(lipgloss.Top, left, right))
-}
-
-// renderShortcutsBar renders the ALWAYS VISIBLE shortcuts bar
-func (m *Model) renderShortcutsBar() string {
-	shortcuts := []struct {
-		key  string
-		desc string
-	}{
-		{"Enter", "Send"},
-		{"Ctrl+N", "New Chat"},
-		{"Ctrl+M", "Model"},
-		{"Ctrl+Q", "Quit"},
-		{"?", "Help"},
-	}
-
-	var items []string
-	for _, s := range shortcuts {
-		key := ShortcutKeyStyle.Render(s.key)
-		desc := ShortcutDescStyle.Render(s.desc)
-		items = append(items, lipgloss.JoinHorizontal(lipgloss.Top, key, " ", desc))
-	}
-
-	content := lipgloss.JoinHorizontal(lipgloss.Top, items...)
-
-	padding := m.width - lipgloss.Width(content) - 2
-	if padding > 0 {
-		spacer := lipgloss.NewStyle().Width(padding / 2).Render("")
-		content = lipgloss.JoinHorizontal(lipgloss.Top, spacer, content)
-	}
-
-	return ShortcutBarStyle.Width(m.width).Render(content)
-}
-
-// renderHelpModal renders the help modal - SIMPLE
-func (m *Model) renderHelpModal(base string) string {
-	helpContent := `
-  ⌨️  KEYBOARD SHORTCUTS
-
-  Enter      Send message
-  Ctrl+N     New session
-  Ctrl+M     Change model
-  Ctrl+Q     Quit
-
-  ↑/↓        Navigate
-  Esc        Close this
-
-  Just type and press Enter!
-`
-
-	helpBox := ModalStyle.Render(helpContent)
-
-	// Center the modal
-	return lipgloss.Place(
-		m.width, m.height,
-		lipgloss.Center, lipgloss.Center,
-		helpBox,
-		lipgloss.WithWhitespaceChars(" "),
-		lipgloss.WithWhitespaceForeground(colorBgPrimary),
-	)
-}
-
-// renderModelSelectorModal renders the model selector modal
-func (m *Model) renderModelSelectorModal(base string) string {
-	models := m.getAvailableModels()
-
-	var b strings.Builder
-	b.WriteString(ModalTitleStyle.Render(" SELECT MODEL "))
-	b.WriteString("\n\n")
-
-	for i, model := range models {
-		var style lipgloss.Style
-		if i == m.modelListIdx {
-			style = ModelItemSelectedStyle
-		} else {
-			style = ModelItemStyle
-		}
-
-		line := fmt.Sprintf("  %s  %s", model.Name, model.Description)
-		b.WriteString(style.Render(line))
-		b.WriteString("\n")
-	}
-
-	b.WriteString("\n")
-	b.WriteString(SessionMetaStyle.Render("  ↑↓ navigate  ·  Enter select  ·  Esc cancel"))
-
-	content := b.String()
-	box := ModalStyle.Render(content)
-
-	return lipgloss.Place(
-		m.width, m.height,
-		lipgloss.Center, lipgloss.Center,
-		box,
-		lipgloss.WithWhitespaceChars(" "),
-		lipgloss.WithWhitespaceForeground(colorBgPrimary),
-	)
-}
-
-// Run starts the TUI application
-func Run(cfg *config.Config) error {
-	m, err := New(cfg)
-	if err != nil {
-		return err
-	}
-
-	p := tea.NewProgram(
-		m,
-		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(),
-	)
-
-	_, err = p.Run()
-	return err
+	return b
 }
