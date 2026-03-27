@@ -1,7 +1,7 @@
-// PicoClaw - Ultra-lightweight personal AI agent
+// SwiftTalon - Ultra-lightweight personal AI agent
 // License: MIT
 //
-// Copyright (c) 2026 PicoClaw contributors
+// Copyright (c) 2026 SwiftTalon contributors
 
 package providers
 
@@ -233,5 +233,5 @@ func getGitHubCopilotCredential() (*auth.AuthCredential, error) {
 	if cred, err := auth.GetCredential("github"); err == nil && cred != nil {
 		return cred, nil
 	}
-	return nil, fmt.Errorf("no credentials for github-copilot. Run: picoclaw auth login --provider github-copilot")
+	return nil, fmt.Errorf("no credentials for github-copilot. Run: swifttalon auth login --provider github-copilot")
 }

@@ -137,7 +137,7 @@ func DefaultTTSConfig() *TTSConfig {
 		Model:        "tts-1",
 		Speed:        1.0,
 		CacheEnabled: true,
-		CacheDir:     "~/.picoclaw/cache/tts",
+		CacheDir:     "~/.swifttalon/cache/tts",
 		OpenAI: OpenAITTSConfig{
 			APIKey:   "",
 			APIBase:  "https://api.openai.com/v1",

@@ -1,227 +1,316 @@
-// SwiftTalon TUI - RAMBO Style 3D Interface
-// Aggressive, bold, tactical design
+// SwiftTalon TUI - Dracula-inspired Dark Theme
+// Clean, modern terminal aesthetic with Glamour markdown support
 
 package tui
 
 import (
+	"strings"
+
+	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
 )
 
-// RAMBO Color Palette - Tactical, aggressive, bold
+// Dracula-inspired Color Palette
+// Based on the design concept from swifttalon-tui.zip
 var (
-	// Primary colors - Military inspired
-	RamboRed     = lipgloss.Color("#FF2D2D")    // Aggressive red
-	RamboOrange  = lipgloss.Color("#FF6B2D")    // Warning orange
-	RamboGreen   = lipgloss.Color("#2DFF6B")    // Tactical green
-	RamboYellow  = lipgloss.Color("#FFE42D")    // Alert yellow
-	RamboCyan    = lipgloss.Color("#2DFFF0")    // Tech cyan
-	
-	// Background colors - Dark tactical
-	DarkBase     = lipgloss.Color("#0A0A0F")    // Near black
-	DarkPanel    = lipgloss.Color("#12121A")    // Panel background
-	DarkSurface  = lipgloss.Color("#1A1A25")    // Surface
-	DarkBorder   = lipgloss.Color("#2A2A3A")    // Border
-	
-	// Accent colors
-	NeonPink     = lipgloss.Color("#FF2D7A")    // Neon accent
-	ElectricBlue = lipgloss.Color("#2D7AFF")    // Electric blue
-	PlasmaPurple = lipgloss.Color("#9D2DFF")    // Plasma purple
-	
+	// Primary colors - Dracula palette
+	Cyan    = lipgloss.Color("#8be9fd") // Cyan - primary accent
+	Green   = lipgloss.Color("#50fa7b") // Green - success/status
+	Pink    = lipgloss.Color("#ff79c6") // Pink - highlights/selection
+	Purple  = lipgloss.Color("#bd93f9") // Purple - secondary accent
+	Orange  = lipgloss.Color("#ffb86c") // Orange - warnings
+	Yellow  = lipgloss.Color("#f1fa8c") // Yellow - alerts
+	Red     = lipgloss.Color("#ff5555") // Red - errors
+
+	// Background colors - True black theme
+	Black       = lipgloss.Color("#000000") // Pure black background
+	DarkBg      = lipgloss.Color("#1e1e1e") // Dark background
+	PanelBg     = lipgloss.Color("#252526") // Panel background
+	SurfaceBg   = lipgloss.Color("#2d2d2d") // Surface
+	BorderDark  = lipgloss.Color("#3c3c3c") // Border
+	BorderLight = lipgloss.Color("#6272a4") // Light border (Dracula comment)
+
 	// Text colors
-	TextPrimary   = lipgloss.Color("#FFFFFF")
-	TextSecondary = lipgloss.Color("#AAAAAA")
-	TextMuted     = lipgloss.Color("#666666")
+	TextPrimary   = lipgloss.Color("#f8f8f2") // White-ish
+	TextSecondary = lipgloss.Color("#cccccc") // Gray
+	TextMuted     = lipgloss.Color("#858585") // Muted gray
 )
 
-// 3D Effect Styles
+// Typing animation frames
+var TypingFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+// Core Styles
 var (
-	// 3D Panel with depth effect
-	Panel3D = lipgloss.NewStyle().
-		Background(DarkPanel).
-		Border(lipgloss.RoundedBorder()).
-		BorderBackground(DarkBase).
-		BorderForeground(DarkBorder).
-		Padding(1, 2)
+	// Logo style with pink accent
+	LogoStyle = lipgloss.NewStyle().
+			Foreground(Pink).
+			Bold(true).
+			Padding(0, 1)
 
-	// 3D Box with shadow effect
-	Box3D = lipgloss.NewStyle().
-		Background(DarkSurface).
-		Border(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("#3A3A4A")).
-		Padding(0, 1)
-
-	// Neon border effect
-	NeonBorder = lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(RamboRed).
-		BorderBackground(DarkBase).
-		Padding(1, 2)
-
-	// Glowing text effect
-	GlowText = lipgloss.NewStyle().
-		Foreground(RamboRed).
-		Bold(true)
-
-	// Title style with 3D effect
-	Title3D = lipgloss.NewStyle().
-		Foreground(RamboOrange).
-		Background(DarkBase).
-		Bold(true).
-		Underline(true).
-		Padding(0, 1)
+	// Title style with cyan
+	TitleStyle = lipgloss.NewStyle().
+			Foreground(Cyan).
+			Bold(true).
+			Padding(0, 1)
 
 	// Subtitle style
 	SubtitleStyle = lipgloss.NewStyle().
-		Foreground(TextSecondary).
-		Italic(true)
+			Foreground(TextSecondary).
+			Italic(true)
 
-	// Input box with tactical styling
-	InputBox = lipgloss.NewStyle().
-		Background(DarkSurface).
-		Border(lipgloss.NormalBorder()).
-		BorderForeground(RamboGreen).
-		Padding(0, 1).
-		Width(60)
-
-	// Response panel
-	ResponsePanel = lipgloss.NewStyle().
-		Background(DarkPanel).
-		Border(lipgloss.DoubleBorder()).
-		BorderForeground(ElectricBlue).
-		Padding(1, 2).
-		Width(80)
-
-	// Status indicator styles
-	StatusOnline = lipgloss.NewStyle().
-		Foreground(RamboGreen).
-		Bold(true)
-
-	StatusProcessing = lipgloss.NewStyle().
-		Foreground(RamboOrange).
-		Bold(true)
-
-	StatusError = lipgloss.NewStyle().
-		Foreground(RamboRed).
-		Bold(true)
-
-	// Model selector
-	ModelSelector = lipgloss.NewStyle().
-		Background(DarkSurface).
-		Foreground(RamboCyan).
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(RamboCyan).
-		Padding(0, 2).
-		Bold(true)
-
-	// Session style
-	SessionStyle = lipgloss.NewStyle().
-		Foreground(TextSecondary).
-		PaddingLeft(2)
-
-	SessionActive = lipgloss.NewStyle().
-		Foreground(RamboYellow).
-		Bold(true).
-		PaddingLeft(2)
-
-	// Help text style
-	HelpStyle = lipgloss.NewStyle().
-		Foreground(TextMuted).
-		Italic(true)
-
-	// Typing indicator animation frames
-	TypingFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
-
-	// 3D Bar for progress/loading
-	Bar3D = lipgloss.NewStyle().
-		Foreground(RamboGreen).
-		Background(DarkSurface)
-
-	// Logo style
-	LogoStyle = lipgloss.NewStyle().
-		Foreground(RamboRed).
-		Bold(true).
-		Padding(0, 1)
-
-	// User message style
-	UserStyle = lipgloss.NewStyle().
-		Foreground(RamboCyan).
-		Bold(true)
-
-	// Assistant message style
-	AssistantStyle = lipgloss.NewStyle().
-		Foreground(RamboOrange).
-		Bold(true)
+	// Glowing text effect
+	GlowText = lipgloss.NewStyle().
+			Foreground(Green).
+			Bold(true)
 )
 
-// CreateGradient creates a visual gradient effect using ANSI colors
-func CreateGradient(text string, startColor, endColor lipgloss.Color) string {
-	// Simple gradient simulation using color codes
-	// Real gradients require more complex terminal support
-	style := lipgloss.NewStyle().
-		Foreground(startColor).
-		Bold(true)
-	return style.Render(text)
-}
+// Panel Styles
+var (
+	// Main panel with dark background
+	MainPanel = lipgloss.NewStyle().
+			Background(PanelBg).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(BorderDark).
+			Padding(1, 2)
+
+	// Content panel for viewport
+	ContentPanel = lipgloss.NewStyle().
+			Background(DarkBg).
+			Border(lipgloss.NormalBorder()).
+			BorderForeground(BorderDark).
+			Padding(1, 1)
+
+	// Input box with green border
+	InputBox = lipgloss.NewStyle().
+			Background(SurfaceBg).
+			Foreground(TextPrimary).
+			Border(lipgloss.NormalBorder()).
+			BorderForeground(Green).
+			Padding(0, 1).
+			Width(60)
+)
+
+// Status Styles
+var (
+	// Online status - green
+	StatusOnline = lipgloss.NewStyle().
+			Foreground(Green).
+			Bold(true)
+
+	// Processing status - orange
+	StatusProcessing = lipgloss.NewStyle().
+				Foreground(Orange).
+				Bold(true)
+
+	// Error status - red
+	StatusError = lipgloss.NewStyle().
+			Foreground(Red).
+			Bold(true)
+
+	// Model selector with cyan
+	ModelSelector = lipgloss.NewStyle().
+			Background(SurfaceBg).
+			Foreground(Cyan).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(Cyan).
+			Padding(0, 2).
+			Bold(true)
+
+	// Session active indicator
+	SessionActive = lipgloss.NewStyle().
+			Foreground(Yellow).
+			Bold(true).
+			PaddingLeft(2)
+)
+
+// Message Styles
+var (
+	// User message - cyan
+	UserStyle = lipgloss.NewStyle().
+			Foreground(Cyan).
+			Bold(true)
+
+	// Assistant message - green
+	AssistantStyle = lipgloss.NewStyle().
+			Foreground(Green).
+			Bold(true)
+
+	// System message - pink
+	SystemStyle = lipgloss.NewStyle().
+			Foreground(Pink).
+			Bold(true)
+)
+
+// Menu Styles (from design concept)
+var (
+	// Menu container
+	MenuPanel = lipgloss.NewStyle().
+			Background(PanelBg).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(BorderDark).
+			Padding(1, 2).
+			Width(50)
+
+	// Selected menu item
+	MenuItemSelected = lipgloss.NewStyle().
+				Background(SurfaceBg).
+				Foreground(TextPrimary).
+				BorderLeft(true).
+				BorderForeground(Pink).
+				Padding(0, 1).
+				Bold(true)
+
+	// Unselected menu item
+	MenuItem = lipgloss.NewStyle().
+			Foreground(TextSecondary).
+			Padding(0, 1)
+
+	// Selection indicator
+	SelectionIndicator = lipgloss.NewStyle().
+				Foreground(Pink).
+				Bold(true)
+)
+
+// Help text style
+var HelpStyle = lipgloss.NewStyle().
+		Foreground(TextMuted).
+		Italic(true)
 
 // GetTypingFrame returns the current typing animation frame
 func GetTypingFrame(frame int) string {
 	return TypingFrames[frame%len(TypingFrames)]
 }
 
-// Render3DBox renders a 3D-style box with shadow effect
-func Render3DBox(content string, width int) string {
-	// Top border with light effect
-	top := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#4A4A5A")).
-		Render("╔" + repeat("═", width-2) + "╗")
-	
-	// Content area
-	middle := Box3D.Width(width).Render(content)
-	
-	// Bottom border with shadow effect
-	bottom := lipgloss.NewStyle().
-		Foreground(DarkBorder).
-		Render("╚" + repeat("═", width-2) + "╝")
-	
-	return top + "\n" + middle + "\n" + bottom
+// GetGlamourRenderer creates a glamour renderer with dark theme
+func GetGlamourRenderer(width int) (*glamour.TermRenderer, error) {
+	return glamour.NewTermRenderer(
+		glamour.WithStandardStyle("dracula"),
+		glamour.WithWordWrap(width),
+	)
 }
 
-// RenderNeonText creates a neon glow effect
-func RenderNeonText(text string, color lipgloss.Color) string {
-	glow := lipgloss.NewStyle().
-		Foreground(color).
-		Bold(true).
-		Render(text)
-	
-	return glow
+// GetGlamourRendererFromStyle creates a glamour renderer with custom style
+func GetGlamourRendererFromStyle(width int) (*glamour.TermRenderer, error) {
+	// Custom Dracula-inspired dark theme for glamour
+	darkStyleConfig := ansi.StyleConfig{
+		Document: ansi.StyleBlock{
+			StylePrimitive: ansi.StylePrimitive{
+				BlockPrefix: "\n",
+				BlockSuffix: "\n",
+				Color:       stringPtr("#f8f8f2"),
+				BackgroundColor: stringPtr("#1e1e1e"),
+			},
+			Margin: uintPtr(2),
+		},
+		BlockQuote: ansi.StyleBlock{
+			StylePrimitive: ansi.StylePrimitive{
+				Italic: boolPtr(true),
+				Color:  stringPtr("#858585"),
+			},
+			Indent:      uintPtr(1),
+			IndentToken: stringPtr("│ "),
+		},
+		List: ansi.StyleList{
+			StyleBlock: ansi.StyleBlock{
+				StylePrimitive: ansi.StylePrimitive{
+					Color: stringPtr("#f8f8f2"),
+				},
+				Indent: uintPtr(2),
+			},
+		},
+		Heading: ansi.StyleBlock{
+			StylePrimitive: ansi.StylePrimitive{
+				Bold:        boolPtr(true),
+				Color:       stringPtr("#ff79c6"),
+				BlockSuffix: "\n",
+			},
+		},
+		H1: ansi.StyleBlock{
+			StylePrimitive: ansi.StylePrimitive{
+				Bold:        boolPtr(true),
+				Color:       stringPtr("#8be9fd"),
+				BackgroundColor: stringPtr("#2d2d2d"),
+			},
+		},
+		H2: ansi.StyleBlock{
+			StylePrimitive: ansi.StylePrimitive{
+				Bold:  boolPtr(true),
+				Color: stringPtr("#50fa7b"),
+			},
+		},
+		H3: ansi.StyleBlock{
+			StylePrimitive: ansi.StylePrimitive{
+				Bold:  boolPtr(true),
+				Color: stringPtr("#ffb86c"),
+			},
+		},
+		Code: ansi.StyleBlock{
+			StylePrimitive: ansi.StylePrimitive{
+				Color:  stringPtr("#ff79c6"),
+				Italic: boolPtr(true),
+			},
+		},
+		CodeBlock: ansi.StyleCodeBlock{
+			StyleBlock: ansi.StyleBlock{
+				StylePrimitive: ansi.StylePrimitive{
+					Color:          stringPtr("#f8f8f2"),
+					BackgroundColor: stringPtr("#252526"),
+				},
+				Indent: uintPtr(2),
+			},
+		},
+		Emph: ansi.StylePrimitive{
+			Italic: boolPtr(true),
+			Color:  stringPtr("#ffb86c"),
+		},
+		Strong: ansi.StylePrimitive{
+			Bold:  boolPtr(true),
+			Color: stringPtr("#50fa7b"),
+		},
+		Link: ansi.StylePrimitive{
+			Color:     stringPtr("#8be9fd"),
+			Underline: boolPtr(true),
+		},
+	}
+
+	return glamour.NewTermRenderer(
+		glamour.WithStyles(darkStyleConfig),
+		glamour.WithWordWrap(width),
+	)
 }
 
-// RenderTacticalHeader creates a tactical-style header
+// Helper functions for pointer types
+func stringPtr(s string) *string       { return &s }
+func boolPtr(b bool) *bool             { return &b }
+func uintPtr(u uint) *uint             { return &u }
+
+// RenderTacticalHeader creates a tactical-style header (kept for compatibility)
 func RenderTacticalHeader(title string, width int) string {
 	left := lipgloss.NewStyle().
-		Foreground(RamboRed).
+		Foreground(Pink).
 		Render("◆")
-	
+
 	right := lipgloss.NewStyle().
-		Foreground(RamboRed).
+		Foreground(Pink).
 		Render("◆")
-	
+
 	titleStyle := lipgloss.NewStyle().
-		Foreground(RamboOrange).
+		Foreground(Orange).
 		Bold(true).
 		Render(title)
-	
+
 	line := lipgloss.NewStyle().
-		Foreground(DarkBorder).
-		Render(repeat("─", (width-len(title)-6)/2))
-	
+		Foreground(BorderDark).
+		Render(strings.Repeat("─", (width-len(title)-6)/2))
+
 	return line + " " + left + " " + titleStyle + " " + right + " " + line
 }
 
-func repeat(s string, n int) string {
-	result := ""
-	for i := 0; i < n; i++ {
-		result += s
-	}
-	return result
+// RenderNeonText creates a neon glow effect (kept for compatibility)
+func RenderNeonText(text string, color lipgloss.Color) string {
+	return lipgloss.NewStyle().
+		Foreground(color).
+		Bold(true).
+		Render(text)
 }

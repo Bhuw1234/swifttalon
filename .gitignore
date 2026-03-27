@@ -8,14 +8,14 @@ build/
 *.dylib
 *.test
 *.out
-/picoclaw
-/picoclaw-test
-cmd/picoclaw/workspace
+/swifttalon
+/swifttalon-test
+cmd/swifttalon/workspace
 
-# Picoclaw specific
+# SwiftTalon specific
 
-# PicoClaw
-.picoclaw/
+# SwiftTalon
+.swifttalon/
 config.json
 sessions/
 build/

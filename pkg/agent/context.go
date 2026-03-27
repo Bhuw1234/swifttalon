@@ -1,7 +1,7 @@
-// PicoClaw - Ultra-lightweight personal AI agent
+// SwiftTalon - Ultra-lightweight personal AI agent
 // Context Window Management - Token tracking and truncation
 //
-// Copyright (c) 2026 PicoClaw contributors
+// Copyright (c) 2026 SwiftTalon contributors
 
 package agent
 
@@ -111,7 +111,7 @@ func getGlobalConfigDir() string {
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(home, ".picoclaw")
+	return filepath.Join(home, ".swifttalon")
 }
 
 func NewContextBuilder(workspace string) *ContextBuilder {
@@ -141,9 +141,9 @@ func (cb *ContextBuilder) getIdentity() string {
 	// Build tools section dynamically
 	toolsSection := cb.buildToolsSection()
 
-	return fmt.Sprintf(`# picoclaw 🐙
+	return fmt.Sprintf(`# swifttalon 🦅
 
-You are picoclaw, a helpful AI assistant.
+You are SwiftTalon, a helpful AI assistant.
 
 ## Current Time
 %s

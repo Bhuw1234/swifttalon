@@ -1,7 +1,7 @@
-// PicoClaw - Ultra-lightweight personal AI agent
+// SwiftTalon - Ultra-lightweight personal AI agent
 // Auth Profile Provider - Multi-key provider with automatic rotation
 //
-// Copyright (c) 2026 PicoClaw contributors
+// Copyright (c) 2026 SwiftTalon contributors
 
 package providers
 

@@ -1,7 +1,7 @@
-// PicoClaw - Ultra-lightweight personal AI agent
+// SwiftTalon - Ultra-lightweight personal AI agent
 // Model Fallback System - Automatically tries next model when one fails
 //
-// Copyright (c) 2026 PicoClaw contributors
+// Copyright (c) 2026 SwiftTalon contributors
 
 package agent
 

@@ -1,7 +1,7 @@
-// PicoClaw - Ultra-lightweight personal AI agent
+// SwiftTalon - Ultra-lightweight personal AI agent
 // Auth Profiles System - Multi-key management with automatic rotation
 //
-// Copyright (c) 2026 PicoClaw contributors
+// Copyright (c) 2026 SwiftTalon contributors
 
 package auth
 
@@ -130,7 +130,7 @@ func NewAuthProfileStore() *AuthProfileStore {
 // ProfileStorePath returns the path to the auth profile store file
 func ProfileStorePath() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".picoclaw", profileDirName)
+	return filepath.Join(home, ".swifttalon", profileDirName)
 }
 
 // LoadAuthProfileStore loads the auth profile store from disk

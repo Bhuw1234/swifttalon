@@ -281,7 +281,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		Agents: AgentsConfig{
 			Defaults: AgentDefaults{
-				Workspace:           "~/.picoclaw/workspace",
+				Workspace:           "~/.swifttalon/workspace",
 				RestrictToWorkspace: true,
 				Provider:            "",
 				Model:               "glm-4.7",
@@ -397,7 +397,7 @@ func DefaultConfig() *Config {
 		},
 		Hooks: HooksConfig{
 			Enabled:    false,
-			ScriptsDir: "~/.picoclaw/hooks",
+			ScriptsDir: "~/.swifttalon/hooks",
 			Events:     map[string]HookEventConfig{},
 		},
 		Voice: VoiceConfig{
@@ -407,7 +407,7 @@ func DefaultConfig() *Config {
 			Model:        "tts-1",
 			Speed:        1.0,
 			CacheEnabled: true,
-			CacheDir:     "~/.picoclaw/cache/tts",
+			CacheDir:     "~/.swifttalon/cache/tts",
 			OpenAI: OpenAIVoiceConfig{
 				APIKey:   "",
 				APIBase:  "https://api.openai.com/v1",

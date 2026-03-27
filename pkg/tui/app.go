@@ -1,5 +1,5 @@
-// SwiftTalon TUI - RAMBO 3D Interface
-// Bold, aggressive, tactical terminal UI with Bubble Tea
+// SwiftTalon TUI - Dracula Dark Theme Interface
+// Clean, modern terminal UI with Bubble Tea and Glamour
 
 package tui
 
@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/Bhuw1234/swifttalon/pkg/agent"
@@ -95,9 +96,10 @@ type (
 // Model represents the TUI state
 type Model struct {
 	// UI Components
-	keys      keyMap
-	textInput textinput.Model
-	viewport  viewport.Model
+	keys        keyMap
+	textInput   textinput.Model
+	viewport    viewport.Model
+	glamRender  *glamour.TermRenderer
 
 	// State
 	width      int
@@ -126,7 +128,7 @@ type Model struct {
 	agentLoop  *agent.AgentLoop
 	ctx        context.Context
 	cancel     context.CancelFunc
-	wg         sync.WaitGroup
+	wg         *sync.WaitGroup
 	sessionKey string
 }
 
@@ -154,15 +156,26 @@ func Run(cfg *config.Config) error {
 	vp := viewport.New(80, 20)
 	vp.SetContent("")
 
+	// Initialize glamour renderer
+	glamRender, err := glamour.NewTermRenderer(
+		glamour.WithStandardStyle("dracula"),
+		glamour.WithWordWrap(78),
+	)
+	if err != nil {
+		glamRender = nil // Fallback to no glamour
+	}
+
 	m := Model{
 		cfg:        cfg,
 		agentLoop:  agentLoop,
 		ctx:        ctx,
 		cancel:     cancel,
+		wg:         new(sync.WaitGroup),
 		sessionKey: "tui:default",
 		messages:   make([]Message, 0),
 		textInput:  ti,
 		viewport:   vp,
+		glamRender: glamRender,
 		sessions: []Session{
 			{ID: "default", Name: "Main Session", CreatedAt: time.Now()},
 		},
@@ -204,6 +217,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Width = msg.Width - 4
 		m.viewport.Height = msg.Height - 10
 		m.ready = true
+		// Re-create glamour renderer with new width
+		if m.viewport.Width > 10 {
+			gr, err := glamour.NewTermRenderer(
+				glamour.WithStandardStyle("dracula"),
+				glamour.WithWordWrap(m.viewport.Width - 4),
+			)
+			if err == nil {
+				m.glamRender = gr
+			}
+		}
 
 	case MsgResponse:
 		m.isTyping = false
@@ -240,7 +263,7 @@ func (m Model) View() string {
 	// Layout
 	var sections []string
 
-	// 1. Header with 3D effect
+	// 1. Header with ASCII art
 	sections = append(sections, m.renderHeader())
 
 	// 2. Main content area (viewport)
@@ -260,18 +283,18 @@ func (m Model) View() string {
 
 func (m Model) renderLoading() string {
 	loadingStyle := lipgloss.NewStyle().
-		Foreground(RamboOrange).
+		Foreground(Orange).
 		Bold(true).
 		Padding(2, 4)
 
 	frame := GetTypingFrame(m.typingFrame)
-	return loadingStyle.Render(fmt.Sprintf("\n  %s INITIALIZING SWIFTTALON TACTICAL INTERFACE...\n", frame))
+	return loadingStyle.Render(fmt.Sprintf("\n  %s INITIALIZING SWIFTTALON...\n", frame))
 }
 
 func (m Model) renderHeader() string {
-	// Logo with neon effect
-	logo := LogoStyle.Render("🐙 SWIFTTALON")
-
+	// ASCII Art Banner
+	banner := m.renderAsciiBanner()
+	
 	// Model selector
 	model := m.models[m.modelIdx]
 	modelDisplay := ModelSelector.Render(fmt.Sprintf("⚡ %s", model))
@@ -280,44 +303,76 @@ func (m Model) renderHeader() string {
 	sessionName := m.sessions[m.sessionIdx].Name
 	sessionDisplay := SessionActive.Render(fmt.Sprintf("◈ %s", sessionName))
 
-	// Tactical header line
+	// Header line with border style
 	headerLine := lipgloss.NewStyle().
-		Foreground(DarkBorder).
+		Foreground(BorderLight).
 		Render(strings.Repeat("─", m.width-4))
 
-	// Combine
-	leftSection := lipgloss.JoinHorizontal(lipgloss.Top, logo, "  ", modelDisplay)
-	rightSection := sessionDisplay
-
-	// Space between
-	space := strings.Repeat(" ", max(0, m.width-lipgloss.Width(leftSection)-lipgloss.Width(rightSection)-4))
+	// Combine header info
+	infoLine := lipgloss.JoinHorizontal(lipgloss.Top, modelDisplay, "  ", sessionDisplay)
+	space := strings.Repeat(" ", max(0, m.width-lipgloss.Width(infoLine)-4))
 
 	header := lipgloss.NewStyle().
-		Background(DarkBase).
+		Background(Black).
 		Padding(0, 2).
-		Render(leftSection + space + rightSection)
+		Render(infoLine + space)
 
-	return lipgloss.JoinVertical(lipgloss.Left, header, headerLine)
+	return lipgloss.JoinVertical(lipgloss.Left, banner, header, headerLine)
+}
+
+func (m Model) renderAsciiBanner() string {
+	// SwiftTalon ASCII art with Dracula colors
+	bannerStyle := lipgloss.NewStyle().
+		Foreground(Cyan).
+		Bold(true)
+
+	// Simple compact banner
+	banner := `
+   ███████╗██╗    ██╗██╗███████╗████████╗████████╗ █████╗ ██╗      ██████╗ ███╗   ██╗
+   ██╔════╝██║    ██║██║██╔════╝╚══██╔══╝╚══██╔══╝██╔══██╗██║     ██╔═══██╗████╗  ██║
+   ███████╗██║ █╗ ██║██║█████╗     ██║      ██║   ███████║██║     ██║   ██║██╔██╗ ██║
+   ╚════██║██║███╗██║██║██╔══╝     ██║      ██║   ██╔══██║██║     ██║   ██║██║╚██╗██║
+   ███████║╚███╔███╔╝██║██║        ██║      ██║   ██║  ██║███████╗╚██████╔╝██║ ╚████║
+   ╚══════╝ ╚══╝╚══╝ ╚═╝╚═╝        ╚═╝      ╚═╝   ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═══╝`
+
+	// Style the banner
+	styledBanner := bannerStyle.Render(banner)
+
+	// Subtitle
+	subtitleStyle := lipgloss.NewStyle().
+		Foreground(Pink).
+		Bold(true).
+		PaddingLeft(4)
+
+	subtitle := subtitleStyle.Render("🐙 THE OCTOPUS PROJECT 🐙")
+
+	// Container
+	containerStyle := lipgloss.NewStyle().
+		Background(Black).
+		Padding(0, 1).
+		Width(m.width - 4)
+
+	return containerStyle.Render(styledBanner + "\n" + subtitle)
 }
 
 func (m Model) renderContent() string {
-	// 3D panel for content
+	// Content panel with dark theme
 	contentStyle := lipgloss.NewStyle().
-		Background(DarkPanel).
-		Border(lipgloss.DoubleBorder()).
-		BorderForeground(ElectricBlue).
-		Padding(1, 2).
+		Background(DarkBg).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(BorderDark).
+		Padding(1, 1).
 		Width(m.width - 4).
 		Height(m.viewport.Height)
 
 	content := m.viewport.View()
 	if content == "" {
-		// Welcome message with 3D effect
+		// Welcome message
 		welcome := RenderTacticalHeader("TACTICAL AI INTERFACE", m.width-8)
 		welcome += "\n\n"
-		welcome += GlowText.Render("  Ready for combat.")
+		welcome += GlowText.Render("  Ready for commands.")
 		welcome += "\n"
-		welcome += SubtitleStyle.Render("  Type your command and press Enter to engage.")
+		welcome += SubtitleStyle.Render("  Type your message and press Enter to engage.")
 		content = welcome
 	}
 
@@ -325,15 +380,18 @@ func (m Model) renderContent() string {
 }
 
 func (m Model) renderInput() string {
-	// Input prompt with tactical styling
-	prompt := GlowText.Render("▸ ")
+	// Input prompt with green styling
+	prompt := lipgloss.NewStyle().
+		Foreground(Green).
+		Bold(true).
+		Render("▸ ")
 
 	// Input box
 	inputStyle := lipgloss.NewStyle().
-		Background(DarkSurface).
+		Background(SurfaceBg).
 		Foreground(TextPrimary).
 		Border(lipgloss.NormalBorder()).
-		BorderForeground(RamboGreen).
+		BorderForeground(Green).
 		Padding(0, 1).
 		Width(m.width - 10)
 
@@ -344,7 +402,7 @@ func (m Model) renderInput() string {
 	if m.isTyping {
 		frame := GetTypingFrame(m.typingFrame)
 		typingStyle := lipgloss.NewStyle().
-			Foreground(RamboOrange).
+			Foreground(Orange).
 			Bold(true)
 		indicator := typingStyle.Render(fmt.Sprintf("  %s AI PROCESSING...", frame))
 		return inputBox + "\n" + indicator
@@ -354,9 +412,9 @@ func (m Model) renderInput() string {
 }
 
 func (m Model) renderStatus() string {
-	// Status bar with tactical styling
+	// Status bar with dark styling
 	statusStyle := lipgloss.NewStyle().
-		Background(DarkSurface).
+		Background(SurfaceBg).
 		Foreground(TextSecondary).
 		Padding(0, 2).
 		Width(m.width - 4)
@@ -367,7 +425,7 @@ func (m Model) renderStatus() string {
 	// Right: Message count
 	msgCount := fmt.Sprintf("MSG: %d", len(m.messages))
 	msgDisplay := lipgloss.NewStyle().
-		Foreground(RamboCyan).
+		Foreground(Cyan).
 		Render(msgCount)
 
 	// Center: Space
@@ -379,7 +437,7 @@ func (m Model) renderStatus() string {
 func (m Model) renderHelp() string {
 	helpStyle := lipgloss.NewStyle().
 		Foreground(TextMuted).
-		Background(DarkBase).
+		Background(Black).
 		Padding(0, 2).
 		Width(m.width - 4)
 
@@ -449,18 +507,29 @@ func (m Model) handleSend() (tea.Model, tea.Cmd) {
 	// Update viewport
 	m.updateViewport()
 
-	// Send to agent
+	// Create channel for async response
+	responseChan := make(chan struct {
+		content string
+		err     error
+	}, 1)
+
+	// Send to agent in goroutine
 	go func() {
 		response, err := m.agentLoop.ProcessDirect(m.ctx, input, m.sessionKey)
-		if err != nil {
-			// Send error
-			return
-		}
-		// Response will be handled via message
-		_ = response
+		responseChan <- struct {
+			content string
+			err     error
+		}{content: response, err: err}
 	}()
 
-	return m, nil
+	// Return tea.Cmd that waits for response and sends appropriate message
+	return m, func() tea.Msg {
+		result := <-responseChan
+		if result.err != nil {
+			return MsgError{Error: result.err}
+		}
+		return MsgResponse{Content: result.content}
+	}
 }
 
 func (m Model) handleNewSession() (tea.Model, tea.Cmd) {
@@ -505,13 +574,23 @@ func (m *Model) updateViewport() {
 
 		content.WriteString(fmt.Sprintf("%s %s\n", header, ts))
 
-		// Message content with word wrap
+		// Message content - render with glamour if available
+		msgContent := msg.Content
+		if m.glamRender != nil {
+			// Try to render as markdown
+			rendered, err := m.glamRender.Render(msgContent)
+			if err == nil {
+				msgContent = strings.TrimSpace(rendered)
+			}
+		}
+
+		// Message content with styling
 		contentStyle := lipgloss.NewStyle().
 			Foreground(TextPrimary).
 			PaddingLeft(2).
 			Width(m.viewport.Width - 4)
 
-		content.WriteString(contentStyle.Render(msg.Content))
+		content.WriteString(contentStyle.Render(msgContent))
 		content.WriteString("\n\n")
 	}
 

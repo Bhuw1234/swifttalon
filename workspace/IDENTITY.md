@@ -53,4 +53,4 @@ Discussions: https://github.com/sipeed/swifttalon/discussions
 ---
 
 "Every bit helps, every bit matters."
-- Picoclaw
+- SwiftTalon

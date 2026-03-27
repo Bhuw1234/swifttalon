@@ -1,7 +1,7 @@
 .git
 .gitignore
 build/
-.picoclaw/
+.swifttalon/
 config/
 .env
 .env.example

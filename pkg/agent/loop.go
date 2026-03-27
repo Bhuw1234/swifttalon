@@ -1,8 +1,8 @@
-// PicoClaw - Ultra-lightweight personal AI agent
+// SwiftTalon - Ultra-lightweight personal AI agent
 // Inspired by and based on nanobot: https://github.com/HKUDS/nanobot
 // License: MIT
 //
-// Copyright (c) 2026 PicoClaw contributors
+// Copyright (c) 2026 SwiftTalon contributors
 
 package agent
 
@@ -34,6 +34,7 @@ import (
 type AgentLoop struct {
 	bus            *bus.MessageBus
 	provider       providers.LLMProvider
+	cfg            *config.Config
 	workspace      string
 	model          string
 	contextWindow  int // Maximum context window size in tokens
@@ -164,6 +165,7 @@ func NewAgentLoop(cfg *config.Config, msgBus *bus.MessageBus, provider providers
 	return &AgentLoop{
 		bus:            msgBus,
 		provider:       provider,
+		cfg:            cfg,
 		workspace:      workspace,
 		model:          cfg.Agents.Defaults.Model,
 		contextWindow:  cfg.Agents.Defaults.MaxContextTokens, // Use max context tokens
@@ -1150,8 +1152,12 @@ func (al *AgentLoop) handleCommand(ctx context.Context, msg bus.InboundMessage) 
 		}
 		switch args[0] {
 		case "models":
-			// TODO: Fetch available models dynamically if possible
-			return "Available models: glm-4.7, claude-3-5-sonnet, gpt-4o (configured in config.json/env)", true
+			// Build list of available models dynamically
+			models := al.getAvailableModels()
+			if len(models) == 0 {
+				return "No models configured", true
+			}
+			return fmt.Sprintf("Available models:\n  %s", strings.Join(models, "\n  ")), true
 		case "channels":
 			if al.channelManager == nil {
 				return "Channel manager not initialized", true
@@ -1197,4 +1203,58 @@ func (al *AgentLoop) handleCommand(ctx context.Context, msg bus.InboundMessage) 
 	}
 
 	return "", false
+}
+
+// getAvailableModels returns a list of available models for the /list models command.
+// It includes the current model, fallback models, and common known models.
+func (al *AgentLoop) getAvailableModels() []string {
+	seen := make(map[string]bool)
+	var models []string
+
+	// Add current model first (marked as current)
+	if al.model != "" && !seen[al.model] {
+		models = append(models, fmt.Sprintf("%s (current)", al.model))
+		seen[al.model] = true
+	}
+
+	// Add fallback models from config
+	if al.cfg != nil {
+		for _, m := range al.cfg.Agents.Defaults.ModelFallbacks {
+			if m != "" && !seen[m] {
+				models = append(models, fmt.Sprintf("%s (fallback)", m))
+				seen[m] = true
+			}
+		}
+	}
+
+	// Add known models from ModelContextLimits, grouped by provider
+	knownModels := []string{
+		// OpenAI
+		"gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo",
+		// Anthropic
+		"claude-3-5-sonnet", "claude-3-opus", "claude-3-sonnet", "claude-3-haiku",
+		// Google
+		"gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro",
+		// Meta/Llama
+		"llama-3.1-405b", "llama-3.1-70b", "llama-3.1-8b",
+		// Zhipu
+		"glm-4", "glm-4-flash", "glm-4-plus", "glm-4.7", "glm-3-turbo",
+		// DeepSeek
+		"deepseek-chat", "deepseek-coder", "deepseek-reasoner",
+		// Mistral
+		"mistral-large", "mistral-medium", "mistral-small",
+		// Groq
+		"groq/llama-3.3-70b", "groq/mixtral-8x7b",
+		// Moonshot
+		"moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k",
+	}
+
+	for _, m := range knownModels {
+		if !seen[m] {
+			models = append(models, m)
+			seen[m] = true
+		}
+	}
+
+	return models
 }

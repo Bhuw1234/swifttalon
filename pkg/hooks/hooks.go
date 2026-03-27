@@ -1,7 +1,7 @@
-// PicoClaw - Ultra-lightweight personal AI agent
+// SwiftTalon - Ultra-lightweight personal AI agent
 // License: MIT
 //
-// Copyright (c) 2026 PicoClaw contributors
+// Copyright (c) 2026 SwiftTalon contributors
 
 // Package hooks provides event-driven automation for agent lifecycle events.
 // Hooks allow users to define scripts or commands that run at specific points
@@ -200,7 +200,7 @@ func NewManager(workspaceDir string) *Manager {
 	return &Manager{
 		hooks:        make(map[HookType][]HookHandler),
 		workspaceDir: workspaceDir,
-		scriptsDir:   "~/.picoclaw/hooks",
+		scriptsDir:   "~/.swifttalon/hooks",
 		eventConfigs: make(map[HookType]EventConfig),
 		enabled:      false,
 	}
