@@ -28,22 +28,6 @@ builds:
       - goos: windows
         goarch: arm
 
-dockers_v2:
-  - id: swifttalon
-    dockerfile: Dockerfile.goreleaser
-    ids:
-      - swifttalon
-    images:
-      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/swifttalon"
-      - "docker.io/{{ .Env.DOCKERHUB_IMAGE_NAME }}"
-    tags:
-      - "{{ .Tag }}"
-      - "latest"
-    platforms:
-      - linux/amd64
-      - linux/arm64
-      - linux/riscv64
-
 archives:
   - formats: [tar.gz]
     # this name template makes the OS and Arch compatible with the results of `uname`.
@@ -66,14 +50,8 @@ changelog:
       - "^docs:"
       - "^test:"
 
-# upx:
-#    - enabled: true
-#      compress: best
-#      lzma: true
-
 release:
   footer: >-
-
     ---
 
     Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
