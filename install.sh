@@ -437,7 +437,7 @@ install_binary_file() {
     if check_root || [ -w "$target_dir" ]; then
         # Direct install with proper permissions
         if command -v install >/dev/null 2>&1; then
-            install -o0 -g0 -m755 "$source_path" "$target_path"
+            install -m755 "$source_path" "$target_path"
         else
             cp "$source_path" "$target_path"
             chmod 755 "$target_path"
@@ -446,7 +446,7 @@ install_binary_file() {
         # Use sudo for installation
         sudo mkdir -p "$target_dir" 2>/dev/null || true
         if command -v install >/dev/null 2>&1; then
-            sudo install -o0 -g0 -m755 "$source_path" "$target_path"
+            sudo install -m755 "$source_path" "$target_path"
         else
             sudo cp "$source_path" "$target_path"
             sudo chmod 755 "$target_path"
