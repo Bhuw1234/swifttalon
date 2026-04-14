@@ -198,6 +198,34 @@ get_latest_version() {
     fi
 }
 
+# Convert arch to GoReleaser naming
+get_archive_arch() {
+    local arch="$1"
+    case "$arch" in
+        amd64)
+            echo "x86_64"
+            ;;
+        arm64)
+            echo "arm64"
+            ;;
+        arm)
+            echo "armv6"
+            ;;
+        riscv64)
+            echo "riscv64"
+            ;;
+        s390x)
+            echo "s390x"
+            ;;
+        mips64)
+            echo "mips64"
+            ;;
+        *)
+            echo "$arch"
+            ;;
+    esac
+}
+
 # Download the binary with progress bar
 download_binary() {
     local os="$1"
@@ -205,25 +233,46 @@ download_binary() {
     local version="$3"
     local output_path="$4"
     local download_url
+    local archive_name
+    local archive_arch
+    local archive_ext
     
-    # Construct download URL
-    if [ "$version" = "latest" ]; then
-        download_url="https://github.com/$GITHUB_REPO/releases/latest/download/${BINARY_NAME}-${os}-${arch}"
+    # Convert arch to GoReleaser naming
+    archive_arch=$(get_archive_arch "$arch")
+    
+    # Capitalize OS for GoReleaser naming
+    local os_cap=$(echo "$os" | sed 's/.*/\u&/')
+    
+    # Determine archive extension
+    if [ "$os" = "windows" ]; then
+        archive_ext="zip"
     else
-        download_url="https://github.com/$GITHUB_REPO/releases/download/${version}/${BINARY_NAME}-${os}-${arch}"
+        archive_ext="tar.gz"
+    fi
+    
+    # Construct archive name and URL
+    archive_name="${BINARY_NAME}_${os_cap}_${archive_arch}.${archive_ext}"
+    
+    if [ "$version" = "latest" ]; then
+        download_url="https://github.com/$GITHUB_REPO/releases/latest/download/${archive_name}"
+    else
+        download_url="https://github.com/$GITHUB_REPO/releases/download/${version}/${archive_name}"
     fi
     
     status "Downloading ${BINARY_NAME} ${version} for ${os}/${arch}..."
+    status "Archive: ${archive_name}"
+    
+    local archive_path="${output_path}.archive"
     
     # Download with progress bar
     if command -v curl >/dev/null 2>&1; then
-        if ! curl -fsSL --progress-bar "$download_url" -o "$output_path" 2>&1; then
+        if ! curl -fsSL --progress-bar "$download_url" -o "$archive_path" 2>&1; then
             error "Failed to download from: $download_url"
             error "Please check your internet connection and try again"
             exit 1
         fi
     elif command -v wget >/dev/null 2>&1; then
-        if ! wget --show-progress -q "$download_url" -O "$output_path" 2>&1; then
+        if ! wget --show-progress -q "$download_url" -O "$archive_path" 2>&1; then
             error "Failed to download from: $download_url"
             error "Please check your internet connection and try again"
             exit 1
@@ -235,15 +284,54 @@ download_binary() {
     fi
     
     # Verify download succeeded
-    if [ ! -f "$output_path" ]; then
-        error "Download failed: file not found"
+    if [ ! -f "$archive_path" ]; then
+        error "Download failed: archive not found"
         exit 1
     fi
     
-    if [ ! -s "$output_path" ]; then
-        error "Download failed: file is empty"
+    if [ ! -s "$archive_path" ]; then
+        error "Download failed: archive is empty"
         exit 1
     fi
+    
+    # Extract binary from archive
+    status "Extracting binary..."
+    if [ "$archive_ext" = "zip" ]; then
+        if ! command -v unzip >/dev/null 2>&1; then
+            error "unzip is required to extract .zip files"
+            exit 1
+        fi
+        unzip -o -q "$archive_path" -d "$(dirname "$output_path")" || {
+            error "Failed to extract archive"
+            exit 1
+        }
+        # Move binary to output path if needed
+        local extracted_binary="$(dirname "$output_path")/${BINARY_NAME}"
+        if [ -f "$extracted_binary" ] && [ "$extracted_binary" != "$output_path" ]; then
+            mv "$extracted_binary" "$output_path"
+        fi
+    else
+        tar -xzf "$archive_path" -C "$(dirname "$output_path")" || {
+            error "Failed to extract archive"
+            exit 1
+        }
+        # Move binary to output path if needed
+        local extracted_binary="$(dirname "$output_path")/${BINARY_NAME}"
+        if [ -f "$extracted_binary" ] && [ "$extracted_binary" != "$output_path" ]; then
+            mv "$extracted_binary" "$output_path"
+        fi
+    fi
+    
+    # Cleanup archive
+    rm -f "$archive_path"
+    
+    # Verify binary was extracted
+    if [ ! -f "$output_path" ]; then
+        error "Binary not found after extraction"
+        exit 1
+    fi
+    
+    chmod +x "$output_path"
 }
 
 # Verify binary file integrity
