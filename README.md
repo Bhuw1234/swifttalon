@@ -49,6 +49,12 @@
 
 
 ## 📢 News
+2026-04-14 🎉 **SwiftTalon v1.0.0 Released!** One-line install now available:
+```bash
+curl -fsSL https://raw.githubusercontent.com/Bhuw1234/swifttalon/main/install.sh | sh
+```
+Boot time: **17ms** (60x faster than claimed 1 second!) · 14 platforms supported
+
 2026-02-16 🎉 SwiftTalon hit 12K stars in one week! Thank you all for your support! SwiftTalon is growing faster than we ever imagined. Given the high volume of PRs, we urgently need community maintainers. Our volunteer roles and roadmap are officially posted [here](doc/swifttalon_community_roadmap_260216.md) —we can’t wait to have you on board!
 
 2026-02-13 🎉 SwiftTalon hit 5000 stars in 4days! Thank you for the community! There are so many PRs&issues come in (during Chinese New Year holidays), we are finalizing the Project Roadmap and setting up the Developer Group to accelerate SwiftTalon's development.  
